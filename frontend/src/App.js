@@ -1,93 +1,85 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useSelector } from 'react-redux';
 import Layout from './components/Layout';
-import { useSelector, useDispatch } from 'react-redux';
-import { logout } from './features/auth/authSlice';
-import { useGetTransactionsQuery, useGetSummaryQuery } from './features/transactions/transactionApi';
-import { useGetCategoriesQuery, useAddCategoryMutation } from './features/categories/categoryApi';
 import LoginSignup from './features/auth/LoginSignup';
-import ExpenseForm from './components/ExpenseForm';
-import './App.css';
+
+// ─── RTK QUERY API HOOKS ───
+import { useGetTransactionsQuery, useGetSummaryQuery } from './features/transactions/transactionApi';
+import { useGetCategoriesQuery } from './features/categories/categoryApi';
+
+// ─── MODULAR VIEW PORTALS ───
+import AnalyticsDashboard from './components/views/AnalyticsDashboard';
+import ExpenseManager from './components/views/ExpenseManager';
+import RoommateSplitter from './components/views/RoommateSplitter';
+import SubscriptionVault from './components/views/SubscriptionVault';
 
 function App() {
-  const dispatch = useDispatch();
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  
-  const [newCat, setNewCat] = useState({ name: '', budget: '' });
-  const [addCategory] = useAddCategoryMutation();
 
-  // RTK Query Hooks (Auto-fetching state monitors)
-  const { data: summary } = useGetSummaryQuery(undefined, { skip: !isAuthenticated });
-  const { data: categories = [] } = useGetCategoriesQuery(undefined, { skip: !isAuthenticated });
+  const { data: summary, isLoading: summaryLoading } = useGetSummaryQuery(undefined, { skip: !isAuthenticated });
+  const { data: categories = [], isLoading: catsLoading } = useGetCategoriesQuery(undefined, { skip: !isAuthenticated });
   const { data: expenses = [], isLoading: txnsLoading } = useGetTransactionsQuery(undefined, { skip: !isAuthenticated });
 
-  const handleAddCategory = async (e) => {
-    e.preventDefault();
-    try {
-      await addCategory({ name: newCat.name, budget: Number(newCat.budget) }).unwrap();
-      setNewCat({ name: '', budget: '' });
-    } catch (err) {
-      alert("Conflict creating category profile context");
-    }
-  };
+    if (!isAuthenticated) {
+    return <LoginSignup />;
+  }
 
-  if (!isAuthenticated) return <LoginSignup />;
+  // Combine loading states for an elegant workspace transition
+  const dynamicSyncLoading = summaryLoading || catsLoading || txnsLoading;
 
   return (
-    <div className="App">
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>BudgetBoss Pro</h1>
-        <button onClick={() => dispatch(logout())} className="btn-delete" style={{ width: 'auto', padding: '5px 15px', borderRadius: '8px' }}>Logout</button>
-      </header>
-      
-      <div className="summary-cards">
-        <div className="summary-card">
-          <h3>Income</h3>
-          <div className="amount positive">₹{summary?.totalIncome?.toLocaleString('en-IN') || 0}</div>
-        </div>
-        <div className="summary-card">
-          <h3>Expenses</h3>
-          <div className="amount negative">₹{summary?.totalExpenses?.toLocaleString('en-IN') || 0}</div>
-        </div>
-        <div className="summary-card">
-          <h3>Balance</h3>
-          <div className="amount">₹{summary?.balance?.toLocaleString('en-IN') || 0}</div>
-        </div>
-      </div>
-
-      <div className="main-content">
-        <div className="left-column">
-          <ExpenseForm categories={categories} wallets={[{ _id: 'dummy_id_placeholder', name: 'Default Cash' }]} />
-          
-          <div className="left-section" style={{ marginTop: '20px' }}>
-            <h3>Manage Budgets</h3>
-            <form onSubmit={handleAddCategory} className="mini-form">
-              <input type="text" placeholder="Category Name" value={newCat.name} onChange={(e) => setNewCat({...newCat, name: e.target.value})} required />
-              <input type="number" placeholder="Budget Limit (₹)" value={newCat.budget} onChange={(e) => setNewCat({...newCat, budget: e.target.value})} />
-              <button type="submit" className="btn-submit" style={{ padding: '8px' }}>Add Domain</button>
-            </form>
-          </div>
-        </div>
-        
-        <div className="right-section">
-          <h3>Live Transaction Ledger</h3>
-          {txnsLoading ? (
-            <p>Parsing secure cloud metrics ledger...</p>
-          ) : (
-            <div className="transaction-list">
-              {expenses.map(item => (
-                <div key={item._id} className={`expense-item ${item.type}`}>
-                  <div>
-                    <strong>{item.description}</strong>
-                    <div className="item-category">{item?.category?.name || 'Unassigned'}</div>
-                  </div>
-                  <span className={item.type}>₹{item.amount}</span>
-                </div>
-              ))}
+    <Layout>
+      {({ activeTab }) => {
+        // Render a high-fidelity loading fallback state while background data is synchronizing
+        if (dynamicSyncLoading) {
+          return (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: '70vh',
+              color: '#364C4F',
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: '600',
+              letterSpacing: '1px'
+            }}>
+              Synchronizing production ledger assets...
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          );
+        }
+
+        // Context-driven view rendering portal matrix
+        switch (activeTab) {
+          case 'dashboard':
+            return (
+              <AnalyticsDashboard 
+                summary={summary} 
+                expenses={expenses} 
+                categories={categories} 
+              />
+            );
+          case 'expenses':
+            return (
+              <ExpenseManager 
+                expenses={expenses} 
+                categories={categories} 
+              />
+            );
+          case 'shared':
+            return <RoommateSplitter />;
+          case 'subscriptions':
+            return <SubscriptionVault />;
+          default:
+            return (
+              <AnalyticsDashboard 
+                summary={summary} 
+                expenses={expenses} 
+                categories={categories} 
+              />
+            );
+        }
+      }}
+    </Layout>
   );
 }
 
