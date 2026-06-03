@@ -300,7 +300,7 @@ const LoginSignup = () => {
                 fontSize: '0.82rem',
                 color: colors.textMuted,
                 cursor: 'pointer',
-                textAlign: 'left',
+                textAlign: 'right',
                 marginTop: '2px',
               }}>
                 Forgot your password?
