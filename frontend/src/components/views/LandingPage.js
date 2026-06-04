@@ -1,8 +1,8 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // <── ADD THIS
+import { useNavigate } from 'react-router-dom'; 
 
 const LandingPage = () => {
-  const navigate = useNavigate(); // <── INITIALIZE NAVIGATION ROUTER
+  const navigate = useNavigate(); 
 
   const colors = {
     tealGradient: 'linear-gradient(90deg, #384C4F 0%, #648B91 100%)',
@@ -25,7 +25,6 @@ const LandingPage = () => {
     white: '#FFFFFF',
   };
 
-  /* ── Shared style helpers ── */
   const btn = (variant = 'primary') => ({
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 600,
@@ -58,7 +57,6 @@ const LandingPage = () => {
     letterSpacing: '0.5px',
   };
 
-  /* ── Dashboard card sub-components ── */
   const ProgressBar = ({ label, spent, total, color }) => {
     const pct = Math.round((spent / total) * 100);
     return (
@@ -137,7 +135,6 @@ const LandingPage = () => {
   return (
     <div style={{ fontFamily: "'Montserrat', sans-serif", background: colors.white, color: colors.textPrimary }}>
 
-      {/* ── NAVBAR ── */}
       <nav style={{
         display: 'flex',
         alignItems: 'center',
@@ -153,13 +150,11 @@ const LandingPage = () => {
           MoneyWise
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {/* Real Router Path Triggers */}
           <button style={btn('ghost')} onClick={() => navigate('/login')}>Log in</button>
           <button style={btn('primary')} onClick={() => navigate('/signup')}>Get started</button>
         </div>
       </nav>
 
-      {/* ── HERO ── */}
       <section style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '80px 48px 60px', gap: '48px' }}>
         <div style={{ flex: 1, maxWidth: '560px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: colors.greenBg, color: colors.green, fontSize: '0.75rem', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', padding: '6px 14px', borderRadius: '20px', marginBottom: '24px' }}>
@@ -196,7 +191,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── FEATURES ── */}
       <section style={{ padding: '64px 48px' }}>
         <div style={sectionTag}>What you get</div>
         <h2 style={sectionTitle}>Everything a student's wallet needs</h2>
@@ -217,7 +211,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
       <section style={{ background: colors.bgLight, padding: '64px 48px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{ ...sectionTag, display: 'inline-block' }}>How it works</div>
@@ -238,7 +231,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── STATS ── */}
       <section style={{ padding: '64px 48px', borderTop: `0.5px solid rgba(54,76,79,0.08)` }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{ ...sectionTag, display: 'inline-block' }}>Why MoneyWise</div>
@@ -255,7 +247,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── CTA BANNER ── */}
       <section style={{ background: colors.darkGradient, padding: '80px 48px', textAlign: 'center' }}>
         <h2 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '2.8rem', color: colors.white, fontWeight: 500, marginBottom: '16px', letterSpacing: '1px' }}>
           Take control of your money today
@@ -269,9 +260,8 @@ const LandingPage = () => {
         >
           Get started — it's free
         </button>
-      </section>
+      </section>  
 
-      {/* ── FOOTER ── */}
       <footer style={{ padding: '32px 48px', borderTop: `0.5px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '3px', color: colors.textPrimary }}>MoneyWise</div>
         <div style={{ fontSize: '0.8rem', color: colors.textLight }}>© 2026 MoneyWise · Smart finance for students</div>

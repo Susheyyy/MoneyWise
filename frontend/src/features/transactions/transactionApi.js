@@ -25,7 +25,11 @@ export const transactionApi = createApi({
       }),
       invalidatesTags: ['Transaction', 'Summary'],
     }),
+    getIntelligenceStats: builder.query({
+  query: () => '/api/stats/intelligence',
+  providesTags: ['Transaction'], 
+}),
   }),
 });
 
-export const { useGetTransactionsQuery, useGetSummaryQuery, useAddTransactionMutation } = transactionApi;
+export const { useGetTransactionsQuery, useGetSummaryQuery, useAddTransactionMutation, useGetIntelligenceStatsQuery } = transactionApi;

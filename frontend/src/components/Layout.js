@@ -7,10 +7,7 @@ const Layout = ({ children }) => {
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   
-  // Active tab state management for dashboard sections
   const [activeTab, setActiveTab] = useState('dashboard');
-
-  // Guard Clause: If user session is invalid, break layout and show Auth view
   if (!isAuthenticated) {
     return <LoginSignup />;
   }
@@ -18,7 +15,6 @@ const Layout = ({ children }) => {
   return (
     <div className="app-container" style={{ display: 'flex', minHeight: '100vh' }}>
       
-      {/* ─── DESKTOP SIDEBAR NAVIGATION ─── */}
       <aside className="sidebar left-section" style={{
         width: '260px',
         borderRadius: '0 20px 20px 0',
@@ -38,8 +34,7 @@ const Layout = ({ children }) => {
               color: '#E3C0D3',
               fontSize: '1.8rem'
             }}>BUDGETBOSS</h2>
-            <span style={{ fontSize: '0.75rem', color: '#95818D', tracking: '2px' }}>PRO EDITION</span>
-          </div>
+                      </div>
 
           <nav className="nav-menu" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <button 
@@ -84,7 +79,6 @@ const Layout = ({ children }) => {
           </nav>
         </div>
 
-        {/* User profile footer element with action hook */}
         <div className="sidebar-footer" style={{ borderTop: '1px solid rgba(227,192,211,0.1)', paddingTop: '20px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
             <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{user?.name || 'Student Member'}</span>
@@ -100,9 +94,7 @@ const Layout = ({ children }) => {
         </div>
       </aside>
 
-      {/* ─── MAIN CONTENT VIEW PORTAL ─── */}
       <main className="main-viewport" style={{ flex: 1, padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-        {/* We pass downstream views dynamically here */}
         {React.Children.map(children, child => {
           if (React.isValidElement(child)) {
             return React.cloneElement(child, { activeTab });
