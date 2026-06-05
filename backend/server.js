@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const groupRoutes = require('./routes/groupRoutes');
 
 const app = express();
 
@@ -18,7 +19,7 @@ app.use('/api/transactions', require('./routes/transactionRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/groups', require('./routes/groupRoutes'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
-app.use('/api/stats/intelligence', require('./routes/intelligenceRoutes')); 
+app.use('/api/stats/intelligence', require('./routes/intelligenceRoutes'));
 
 app.get('/', (req, res) => {
   res.json({ infrastructure: 'API Running Stable' });

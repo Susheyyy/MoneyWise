@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginSignup from './features/auth/LoginSignup';
 import LandingPage from './components/views/LandingPage';
+import JoinGroupLanding from './components/views/JoinGroupLanding';
 
 import { useGetTransactionsQuery, useGetSummaryQuery } from './features/transactions/transactionApi';
 import { useGetCategoriesQuery } from './features/categories/categoryApi';
@@ -29,29 +30,71 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      
       <Route path="/login" element={<LoginSignup initialIsLogin={true} />} />
       <Route path="/signup" element={<LoginSignup initialIsLogin={false} />} />
 
- // Replace the /dashboard Route inside src/App.js with this:
-<Route 
-  path="/dashboard" 
-  element={
-    <ProtectedRoute>
-      <Layout>
-        {dynamicSyncLoading ? (
-          <div style={{ padding: '40px', color: '#364C4F', fontWeight: '600' }}>
-            Synchronizing assets...
-          </div>
-        ) : (
-          <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />
-        )}
-      </Layout>
-    </ProtectedRoute>
-  }
-/>
+      <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              {dynamicSyncLoading ? (
+                <div style={{ padding: '40px', color: '#364C4F', fontWeight: '600' }}>
+                  Synchronizing assets...
+                </div>
+              ) : (
+                <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />
+              )}
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
 
-       <Route path="*" element={<Navigate to="/" replace />} />
+      <Route 
+        path="/expenses" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ExpenseManager />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route 
+        path="/roommate-matrix" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <RoommateSplitter />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route 
+        path="/subscriptions" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SubscriptionVault />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route 
+        path="/join-group/:token" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <JoinGroupLanding />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

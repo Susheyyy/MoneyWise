@@ -6,8 +6,6 @@ import { logout } from '../features/auth/authSlice';
 import ExpenseManager from './views/ExpenseManager';
 import RoommateSplitter from './views/RoommateSplitter';
 import SubscriptionVault from './views/SubscriptionVault';
-// ─── OPTIONAL IMPORT: Add if you have a separate Goals view component ready ───
-// import GoalsManager from './views/GoalsManager'; 
 
 const Layout = ({ children }) => {
   const dispatch = useDispatch();
@@ -41,21 +39,20 @@ const Layout = ({ children }) => {
   const renderActiveViewContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return children;
+        return <div style={{ padding: '24px 32px' }}>{children}</div>; 
       case 'expenses':
-        return <ExpenseManager expenses={children?.props?.expenses || []} categories={children?.props?.categories || []} />;
+        return <div style={{ padding: '24px 32px' }}><ExpenseManager expenses={children?.props?.expenses || []} categories={children?.props?.categories || []} /></div>;
       case 'shared':
-        return <RoommateSplitter />;
+        return <RoommateSplitter />; 
       case 'subscriptions':
-        return <SubscriptionVault />;
+        return <div style={{ padding: '24px 32px' }}><SubscriptionVault /></div>; 
       case 'goals':
-        return <div style={{ padding: '20px', color: colors.darkTeal, fontWeight: 500 }}>Goals module workspace coming soon...</div>;
+        return <div style={{ padding: '24px 32px', color: colors.darkTeal, fontWeight: 500 }}>Goals module workspace coming soon...</div>;
       default:
-        return children;
+        return <div style={{ padding: '24px 32px' }}>{children}</div>;
     }
   };
 
-  /* ─── HIGH-FIDELITY SVG VECTOR ICONS ─── */
   const IconHamburger = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.darkTeal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="18" x2="20" y2="18" />
@@ -86,7 +83,6 @@ const Layout = ({ children }) => {
     </svg>
   );
 
-  // ─── NEW TARGET GOALS SVG ICON BLOCK ───
   const IconTarget = ({ active }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? colors.activeGreen : colors.textMuted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
@@ -124,21 +120,10 @@ const Layout = ({ children }) => {
         <div onClick={() => setIsDrawerOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.2)', zIndex: 998 }} />
       )}
 
-      {/* OVERLAY DRAWER PANEL */}
       <nav style={{
-        width: '240px',
-        backgroundColor: colors.white,
-        borderRight: `0.5px solid ${colors.border}`,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        padding: '20px 16px',
-        gap: '6px',
-        position: 'fixed',
-        top: 0, bottom: 0,
-        left: isDrawerOpen ? '0' : '-240px',
-        zIndex: 999,
-        transition: 'left 0.25s ease'
+        width: '240px', backgroundColor: colors.white, borderRight: `0.5px solid ${colors.border}`,
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '20px 16px', gap: '6px',
+        position: 'fixed', top: 0, bottom: 0, left: isDrawerOpen ? '0' : '-240px', zIndex: 999, transition: 'left 0.25s ease'
       }}>
         <div 
           onClick={() => { setActiveTab('dashboard'); setIsDrawerOpen(false); navigate('/dashboard'); }}
@@ -157,7 +142,6 @@ const Layout = ({ children }) => {
           <span style={{ fontWeight: activeTab === 'expenses' ? 600 : 500, color: activeTab === 'expenses' ? colors.activeGreen : colors.darkTeal }}>Expenses</span>
         </button>
 
-        {/* ─── 3. NEW INTEGRATED TRACKING TAB VECTOR ─── */}
         <button onClick={() => { setActiveTab('goals'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'goals' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
           <IconTarget active={activeTab === 'goals'} />
           <span style={{ fontWeight: activeTab === 'goals' ? 600 : 500, color: activeTab === 'goals' ? colors.activeGreen : colors.darkTeal }}>Savings Goals</span>
@@ -183,7 +167,6 @@ const Layout = ({ children }) => {
 
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         
-        {/* HEADER TOPBAR CONTAINER */}
         <header style={{ display: 'flex', alignItems: 'center', padding: '13px 22px', backgroundColor: colors.white, borderBottom: `0.5px solid ${colors.border}`, position: 'sticky', top: 0, zIndex: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <button onClick={() => setIsDrawerOpen(!isDrawerOpen)} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '4px', borderRadius: '4px', outline: 'none' }}>
@@ -205,42 +188,22 @@ const Layout = ({ children }) => {
               <IconPlus />Add expense
             </button>
 
-            {/* ─── 2. AVATAR NOW HOUSES THE ACTIVE USER LOGGING STREAK CONTEXT ─── */}
             <div 
               onClick={() => dispatch(logout())} 
-              title={`Logged in as ${user?.name || 'User'} · 🔥 14-day logging streak (Click to log out)`} 
+              title={`Logged in as ${user?.name || 'User'} · 🔥 14-day streak`} 
               style={{ 
-                width: '34px', 
-                height: '34px', 
-                borderRadius: '50%', 
-                background: 'linear-gradient(135deg, #364C4F, #233235)', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '11px', 
-                fontWeight: 600, 
-                color: colors.white, 
-                cursor: 'pointer', 
-                boxShadow: '0 2px 6px rgba(54,76,79,0.15)',
-                position: 'relative'
+                width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #364C4F, #233235)', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: colors.white, 
+                cursor: 'pointer', position: 'relative'
               }}
             >
               {getInitials(user?.name)}
-              {/* Flame streak indicator pip dot overlay */}
               <span style={{ position: 'absolute', bottom: '-2px', right: '-2px', background: '#BA7517', border: '1.5px solid #fff', width: '10px', height: '10px', borderRadius: '50%' }} />
             </div>
           </div>
         </header>
 
-        {/* ─── 1. OPTIMIZED VIEWPORT CONTAINER WITH GRACEFUL BACKGROUND BLOCKS ─── */}
-        <div style={{ 
-          flex: 1, 
-          padding: '24px 32px 40px 32px', // Added wider lateral bounds to mimic high-fidelity HTML margins
-          maxWidth: '1360px', 
-          width: '100%', 
-          margin: '0 auto',
-          boxSizing: 'border-box'
-        }}>
+        <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
           {renderActiveViewContent()}
         </div>
 

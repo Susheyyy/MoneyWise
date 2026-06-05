@@ -7,13 +7,11 @@ import {
   useEditSubscriptionMutation
 } from '../../features/subscriptions/subscriptionApi';
 
-// Reusable Dropdown Row Component for a clean layout architecture
-const SubscriptionRow = ({ sub, colors, mapCategoryIcons, getCategoryThemeColor, getDaysRemainingText, toggleStatus, handleInitiateEditMode, handleDeleteTrigger }) => {
+const SubscriptionRow = ({ sub, colors, mapCategoryIcons, getCategoryThemeColor, getDaysRemainingText, toggleStatus, handleInitiateEditMode, setDeleteTargetId }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
   const categoryColor = getCategoryThemeColor(sub.category);
 
-  // Close dropdown menu when clicking outside of it
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -50,7 +48,6 @@ const SubscriptionRow = ({ sub, colors, mapCategoryIcons, getCategoryThemeColor,
           {sub.isActive ? getDaysRemainingText(sub.nextBillingDate) : 'Paused'}
         </div>
 
-        {/* Status Toggle Switch */}
         <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', cursor: 'pointer', flexShrink: 0 }}>
           <input type="checkbox" checked={sub.isActive} onChange={() => toggleStatus(sub._id)} style={{ opacity: 0, width: 0, height: 0 }} />
           <span style={{ position: 'absolute', inset: 0, backgroundColor: sub.isActive ? colors.successText : '#D6DCDC', borderRadius: '20px', transition: '0.2s', display: 'block' }}>
@@ -58,32 +55,25 @@ const SubscriptionRow = ({ sub, colors, mapCategoryIcons, getCategoryThemeColor,
           </span>
         </label>
 
-        {/* 3 Vertical Dots Kebab Menu Action Container */}
         <div ref={menuRef} style={{ position: 'relative', display: 'inline-block', overflow: 'visible' }}>
           <button 
             onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px', fontSize: '16px', color: colors.textMuted, fontWeight: 'bold', outline: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(0,0,0,0.04)'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
           >
             ⋮
           </button>
 
           {showMenu && (
-            <div style={{ position: 'absolute', right: 0, top: '28px', backgroundColor: colors.white, borderRadius: '8px', border: `0.5px solid ${colors.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', zIndex: 100, width: '110px', padding: '4px 0', animation: 'fadeIn 0.15s ease' }}>
+            <div style={{ position: 'absolute', right: 0, top: '28px', backgroundColor: colors.white, borderRadius: '8px', border: `0.5px solid ${colors.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', zIndex: 100, width: '110px', padding: '4px 0' }}>
               <button 
                 onClick={() => { setShowMenu(false); handleInitiateEditMode(sub); }}
                 style={{ width: '100%', border: 'none', background: 'none', padding: '8px 14px', textAlign: 'left', fontSize: '12px', fontWeight: 500, color: colors.textPrimary, cursor: 'pointer' }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = colors.bgLight}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
               >
                 Edit Details
               </button>
               <button 
-                onClick={() => { setShowMenu(false); handleDeleteTrigger(sub._id); }}
+                onClick={() => { setShowMenu(false); setDeleteTargetId(sub._id); }} 
                 style={{ width: '100%', border: 'none', background: 'none', padding: '8px 14px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: colors.redText, cursor: 'pointer' }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = colors.redBg}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
               >
                 Delete Plan
               </button>
@@ -105,6 +95,7 @@ const SubscriptionVault = () => {
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);  
   const [toast, setToast] = useState({ show: false, message: '', type: 'error' });
 
   const [newSubData, setNewSubData] = useState({
@@ -205,18 +196,18 @@ const SubscriptionVault = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteTrigger = async (id) => {
-    if (window.confirm('Are you sure you want to delete this subscription plan?')) {
-      try {
-        await deleteSubscription(id).unwrap();
-        showNotification('Subscription plan deleted entirely.', 'success');
-      } catch (err) {
-        showNotification('Failed to remove subscription line item.', 'error');
-      }
+  const handleConfirmedDeleteExecute = async () => {
+    if (!deleteTargetId) return;
+    try {
+      await deleteSubscription(deleteTargetId).unwrap();
+      showNotification('Subscription plan deleted entirely.', 'success');
+    } catch (err) {
+      showNotification('Failed to remove subscription line item.', 'error');
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
-  /* ─── HIGH-FIDELITY VECTOR SVG ICONS ─── */
   const IconMusic = () => (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13M9 9l12-2M6 21a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm12-2a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
   );
@@ -253,7 +244,31 @@ const SubscriptionVault = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', position: 'relative', overflow: 'visible' }}>
       
-      {/* TOAST OVERLAY */}
+      {deleteTargetId && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30, 51, 54, 0.4)', backdropFilter: 'blur(4px)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.15s ease' }}>
+          <div style={{ background: colors.white, padding: '28px', borderRadius: '16px', border: `0.5px solid ${colors.border}`, width: '380px', maxWidth: '90%', boxShadow: '0 12px 36px rgba(30,51,54,0.18)', animation: 'scaleUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <h4 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.25rem', fontWeight: 500, color: colors.textDark, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delete Subscription?</h4>
+              <p style={{ color: colors.textMuted, fontSize: '0.88rem', lineHeight: '1.5', marginTop: '6px' }}>Are you sure you want to completely remove this plan from your active transaction curves? This action cannot be undone.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+              <button 
+                onClick={() => setDeleteTargetId(null)}
+                style={{ background: colors.bgLight, color: colors.textPrimary, border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmedDeleteExecute}
+                style={{ background: colors.redText, color: colors.white, border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}
+              >
+                Delete Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast.show && (
         <div style={{ position: 'fixed', top: '24px', right: '24px', background: toast.type === 'success' ? colors.successBg : colors.redBg, borderLeft: `4px solid ${toast.type === 'success' ? colors.successText : colors.redText}`, padding: '14px 24px', borderRadius: '6px', boxShadow: '0 8px 20px rgba(54,76,79,0.12)', zIndex: 1000, display: 'flex', alignItems: 'center', gap: '12px', color: toast.type === 'success' ? colors.successText : colors.redText, fontWeight: 600, fontSize: '0.85rem', animation: 'fadeIn 0.2s ease' }}>
           {toast.type === 'success' ? '✓' : '✕'}
@@ -261,7 +276,6 @@ const SubscriptionVault = () => {
         </div>
       )}
 
-      {/* HEADER CONTROLS BAR */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '1.8rem', color: colors.darkTeal, fontFamily: "'Oswald', sans-serif", fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SUBSCRIPTIONS/PLANS</h2>
@@ -275,7 +289,6 @@ const SubscriptionVault = () => {
         )}
       </div>
 
-      {/* ADD/EDIT FORM SLIDEOUT */}
       {showAddForm && (
         <form onSubmit={handleCreateOrUpdateSubscriptionSubmit} style={{ background: colors.white, padding: '24px', borderRadius: '16px', border: `0.5px solid ${colors.border}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', alignItems: 'end', animation: 'slideDown 0.2s ease' }}>
           <div>
@@ -314,8 +327,7 @@ const SubscriptionVault = () => {
         </form>
       )}
 
-      {/* METRIC STRIPS PANEL */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
         <div style={{ background: colors.darkTeal, borderRadius: '18px', padding: '20px 24px', color: colors.white }}>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#5DCAA5', marginBottom: '6px' }}>Monthly Burn</div>
           <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '2.4rem', fontWeight: 600 }}>₹{monthlyBurnSum.toLocaleString('en-IN')}</div>
@@ -346,12 +358,10 @@ const SubscriptionVault = () => {
         </div>
       </div>
 
-      {/* CORE ASYMMETRICAL CONTENT LIST LAYER */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '18px', alignItems: 'start', overflow: 'visible' }}>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', overflow: 'visible' }}>
           
-          {/* Active Loop Collections */}
           <div style={{ overflow: 'visible' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>ACTIVE • {activePlans.length}</span>
@@ -366,13 +376,12 @@ const SubscriptionVault = () => {
                   key={sub._id} sub={sub} colors={colors} 
                   mapCategoryIcons={mapCategoryIcons} getCategoryThemeColor={getCategoryThemeColor} 
                   getDaysRemainingText={getDaysRemainingText} toggleStatus={toggleStatus} 
-                  handleInitiateEditMode={handleInitiateEditMode} handleDeleteTrigger={handleDeleteTrigger} 
+                  handleInitiateEditMode={handleInitiateEditMode} setDeleteTargetId={setDeleteTargetId} 
                 />
               ))}
             </div>
           </div>
 
-          {/* Paused Loop Collections */}
           <div style={{ overflow: 'visible' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>PAUSED • {pausedPlans.length}</span>
@@ -387,7 +396,7 @@ const SubscriptionVault = () => {
                   key={sub._id} sub={sub} colors={colors} 
                   mapCategoryIcons={mapCategoryIcons} getCategoryThemeColor={getCategoryThemeColor} 
                   getDaysRemainingText={getDaysRemainingText} toggleStatus={toggleStatus} 
-                  handleInitiateEditMode={handleInitiateEditMode} handleDeleteTrigger={handleDeleteTrigger} 
+                  handleInitiateEditMode={handleInitiateEditMode} setDeleteTargetId={setDeleteTargetId} 
                 />
               ))}
             </div>
@@ -395,7 +404,6 @@ const SubscriptionVault = () => {
 
         </div>
 
-        {/* CHRONOLOGICAL RENEWALS TIMELINE CARD */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div style={{ background: colors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${colors.border}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
