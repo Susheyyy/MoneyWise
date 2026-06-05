@@ -33,33 +33,23 @@ function App() {
       <Route path="/login" element={<LoginSignup initialIsLogin={true} />} />
       <Route path="/signup" element={<LoginSignup initialIsLogin={false} />} />
 
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute>
-            <Layout>
-              {({ activeTab }) => {
-                if (dynamicSyncLoading) {
-                  return <div style={{ padding: '40px', color: '#364C4F', fontWeight: '600' }}>Synchronizing assets...</div>;
-                }
-
-                switch (activeTab) {
-                  case 'dashboard':
-                    return <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />;
-                  case 'expenses':
-                    return <ExpenseManager expenses={expenses} categories={categories} />;
-                  case 'shared':
-                    return <RoommateSplitter />;
-                  case 'subscriptions':
-                    return <SubscriptionVault />;
-                  default:
-                    return <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />;
-                }
-              }}
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+ // Replace the /dashboard Route inside src/App.js with this:
+<Route 
+  path="/dashboard" 
+  element={
+    <ProtectedRoute>
+      <Layout>
+        {dynamicSyncLoading ? (
+          <div style={{ padding: '40px', color: '#364C4F', fontWeight: '600' }}>
+            Synchronizing assets...
+          </div>
+        ) : (
+          <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />
+        )}
+      </Layout>
+    </ProtectedRoute>
+  }
+/>
 
        <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
