@@ -4,8 +4,8 @@ import { baseQueryWithAuth } from '../../api/baseQuery';
 export const subscriptionApi = createApi({
   reducerPath: 'subscriptionApi',
   baseQuery: baseQueryWithAuth,
-  tagTypes: ['Subscription', 'Summary'], // Automatically invalidates analytics summaries on modifications
-// Ensure your endpoints look like this:
+  tagTypes: ['Subscription', 'Summary'], 
+  
 endpoints: (builder) => ({
     getSubscriptions: builder.query({
       query: () => '/api/subscriptions',
@@ -19,7 +19,6 @@ endpoints: (builder) => ({
       query: (id) => ({ url: `/api/subscriptions/${id}/toggle`, method: 'PATCH' }),
       invalidatesTags: ['Subscription', 'Summary'],
     }),
-    // ADD THESE:
     deleteSubscription: builder.mutation({
       query: (id) => ({ url: `/api/subscriptions/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Subscription', 'Summary'],

@@ -2,28 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import {
   useGetTransactionsQuery,
-  useAddTransactionMutation // FIXED: Swapped out non-existent useCreateTransactionMutation
+  useAddTransactionMutation 
 } from '../../features/transactions/transactionApi';
 
 const ExpenseManager = () => {
   const currentUser = useSelector((state) => state.auth.user);
   
   const { data: expensesData = [], refetch } = useGetTransactionsQuery();
-  const [addTransaction] = useAddTransactionMutation(); // FIXED
+  const [addTransaction] = useAddTransactionMutation(); 
 
-  // Core view workspace states matching template definitions
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
   const [selectedWalletFilter, setSelectedWalletFilter] = useState('');
   
-  // Interactive navigation toggles
   const [selectedTxn, setSelectedTxn] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-
-  // Modular creation form input hooks
   const [txnType, setTxnType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -35,7 +31,6 @@ const ExpenseManager = () => {
   const [isShared, setIsShared] = useState(false);
   const [autoCatSuggestion, setAutoCatSuggestion] = useState('');
 
-  // Internal toast notification banner state loop
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   const uiColors = {
@@ -116,7 +111,6 @@ const ExpenseManager = () => {
     }
 
     try {
-      // FIXED: Used addTransaction mutation hook to execute records save cleanly
       await addTransaction({
         amount: Number(amount),
         description: description.trim(),
@@ -144,17 +138,14 @@ const ExpenseManager = () => {
   };
 
   const handleDeleteStub = (id) => {
-    // FIXED: Non-blocking notification helper stub to remove compilation dependency issues
     showNotification('Deletion requires deleteTransaction mutation implementation inside transactionApi.', 'error');
   };
 
-  // Compute live analytical summary aggregates
   const totalIncome = expensesData.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpenses = expensesData.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const netSavings = totalIncome - totalExpenses;
   const largestSpendItem = expensesData.filter(t => t.type === 'expense').sort((a, b) => b.amount - a.amount)[0];
 
-  // Structural dynamic query execution filter pipeline
   const filteredTransactions = expensesData.filter(t => {
     if (activeTab === 'expense' && t.type !== 'expense') return false;
     if (activeTab === 'income' && t.type !== 'income') return false;

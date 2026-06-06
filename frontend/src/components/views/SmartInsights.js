@@ -4,7 +4,6 @@ const SmartInsights = ({ transactions = [] }) => {
   const expenses = transactions.filter(t => t.type === 'expense' || !t.type);
   const totalSpent = expenses.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-  // Extract statistical metrics
   const foodTotal = expenses.filter(t => t.category === 'Food').reduce((s, t) => s + t.amount, 0);
   const foodPercentage = totalSpent > 0 ? Math.round((foodTotal / totalSpent) * 100) : 0;
 

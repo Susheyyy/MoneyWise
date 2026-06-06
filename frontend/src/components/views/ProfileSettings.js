@@ -6,7 +6,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
   const [activeMenu, setActiveMenu] = useState('Profile'); 
 
-  // Master baseline state data configuration
   const [savedData, setSavedData] = useState({
     firstName: currentUser?.name?.split(' ')[0] || 'Sushmita',
     lastName: currentUser?.name?.split(' ')[1] || 'Das',
@@ -27,7 +26,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     budgets: { food: '5000', shopping: '4000', transport: '2000', hostel: '3500', entertainment: '1500', education: '2000', health: '1200' }
   });
 
-  // Active form fields state tracks
   const [firstName, setFirstName] = useState(savedData.firstName);
   const [lastName, setLastName] = useState(savedData.lastName);
   const [email, setEmail] = useState(savedData.email);
@@ -139,7 +137,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
         </div>
       )}
 
-      {/* TOPBAR PANEL HEADER WITH SMOOTH ACCENT TRANSITION FLUID MATRIX */}
       <header style={{ 
         display: 'flex', 
         alignItems: 'center', 
@@ -149,7 +146,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
         borderBottom: hasChanges ? `1px solid ${uiColors.border}` : '1px solid transparent', 
         position: 'sticky', 
         top: 0, 
-        // Completely collapses height and removes content footprint when zero adjustments exist
         height: hasChanges ? '64px' : '0px', 
         opacity: hasChanges ? 1 : 0,
         transform: hasChanges ? 'translateY(0)' : 'translateY(-10px)',
@@ -164,10 +160,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
         </div>
       </header>
 
-      {/* THREE-COLUMN LAYOUT MATRIX */}
       <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr) 340px', background: uiColors.white }}>
-        
-        {/* SIDEBAR NAVIGATION */}
         <aside style={{ background: '#fff', borderRight: `1px solid ${uiColors.border}`, padding: '8px 0 24px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '16px 24px 8px 24px' }}>Account</div>
           <div onClick={() => setActiveMenu('Profile')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Profile' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Profile' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Profile' ? '#F0FAF6' : 'transparent' }}>Profile Details</div>
@@ -191,10 +184,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
           <div onClick={() => setActiveMenu('Settings')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Settings' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Settings' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Settings' ? '#F0FAF6' : 'transparent' }}>Settings</div>
         </aside>
 
-        {/* COMPONENT CENTRAL CONTENT DISPATCH LAYOUT */}
         <main style={{ padding: '32px 48px', display: 'flex', flexDirection: 'column', gap: '32px', overflowY: 'auto' }}>
           
-          {/* TAB 1: PROFILE DETAILS VIEW */}
           {activeMenu === 'Profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <div>
@@ -244,7 +235,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                 </div>
               </div>
 
-              {/* IMAGE 2 DANGER ZONE CLONE REPORT MATCHING */}
               <section style={{ border: '1.5px solid #F5BFBF', borderRadius: '14px', overflow: 'hidden', background: '#ffffff', marginTop: '16px' }}>
                 <div style={{ padding: '20px 24px', borderBottom: '1px solid #FEF0F0', background: '#ffffff' }}>
                   <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#791F1F', fontFamily: "'Montserrat', sans-serif" }}>Danger zone</h4>
@@ -280,7 +270,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 2: PLAN MODULE VIEW */}
           {activeMenu === 'Plan' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px' }}>Account Plan Tier</h3>
@@ -298,7 +287,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 3: SECURITY CONTROLS */}
           {activeMenu === 'Security' && (
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Security & Authorization Matrix</h3>
@@ -306,7 +294,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 4: NOTIFICATIONS AND ALERTS */}
           {activeMenu === 'Notifications' && (
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '20px' }}>Notifications & Alerts</h3>
@@ -332,10 +319,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 5: PAYMENT GATEWAYS MATRIX */}
           {activeMenu === 'Wallets' && (
             <div>
-              {/* IMAGE 3 EXACT SPECIFICATION CLONE MATCH */}
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '24px' }}>Payment Gateways Matrix</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {['Primary Bank Account', 'GPay UPI Wallet', 'Cash Ledger'].map(w => (
@@ -347,7 +332,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 6: SPENDING LIMITS BUDGETS */}
           {activeMenu === 'Budgets' && (
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '20px' }}>Monthly Proportions Limits</h3>
@@ -373,7 +357,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 7: CATEGORIES */}
           {activeMenu === 'Categories' && (
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Category Allocations Map</h3>
@@ -381,7 +364,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 8: APPEARANCE PREFERENCES */}
           {activeMenu === 'Appearance' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', animation: 'fadeIn 0.2s ease' }}>
               <div>
@@ -471,7 +453,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 9: LOG DATA EXPORTS */}
           {activeMenu === 'Export' && (
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Export Transaction History Data</h3>
@@ -479,7 +460,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-          {/* TAB 10: LOGOUT PANEL CONFIGURATION */}
           {activeMenu === 'Settings' && (
             <div style={{ animation: 'fadeIn 0.2s ease' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Settings</h3>
@@ -507,10 +487,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
         </main>
 
-        {/* RIGHT COLUMN TILES */}
         <aside style={{ background: '#fff', borderLeft: `1px solid ${uiColors.border}`, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '28px', overflowY: 'auto' }}>
-          
-          {/* STATS MATRIX */}
           <div>
             <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', marginBottom: '14px' }}>Your Stats</div>
             

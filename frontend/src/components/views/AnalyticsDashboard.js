@@ -4,7 +4,6 @@ import { useGetIntelligenceStatsQuery } from '../../features/transactions/transa
 
 const AnalyticsDashboard = ({ summary, expenses, categories }) => {
   const { user } = useSelector((state) => state.auth);
-  // Read live calculations from your Smart Intelligence endpoint
   const { data: intelligence, isLoading } = useGetIntelligenceStatsQuery();
 
   if (isLoading) {
@@ -38,7 +37,6 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
     return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   };
 
-  /* ─── 🛠️ HIGH-FIDELITY SVG VECTOR ICONS ─── */
   const IconTrendingDown = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.red} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" />
@@ -64,15 +62,11 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
   );
 
   return (
-    // ─── OPTIMIZED MARGIN SPLIT TO SIT FLUSH WITHIN DYNAMIC COMPONENT BOUNDARIES ───
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 294px', gap: '20px', width: '100%', boxSizing: 'border-box' }}>
       
-      {/* ─── LEFT COLUMN: CORE DASHBOARD PORTAL OVERVIEW ─── */}
       <main style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr)', gap: '14px' }}>
-          
-          {/* 💵 HERO BLOCK: LIMIT GAUGES */}
           <div style={{ background: '#1E3336', borderRadius: '18px', padding: '24px', color: colors.white, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '180px', height: '180px', borderRadius: '50%', background: 'rgba(93,202,165,0.08)' }} />
             <div style={{ position: 'absolute', bottom: '-30px', left: '50px', width: '130px', height: '130px', borderRadius: '50%', background: 'rgba(93,202,165,0.05)' }} />
@@ -115,7 +109,6 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
             </div>
           </div>
 
-          {/* ── Spending by category Card ── */}
           <div style={{ background: colors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${colors.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
               <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E3336' }}>Spending by category</span>
@@ -142,7 +135,6 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
           </div>
         </div>
 
-        {/* 📈 MID ROW: TILES */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
           <div style={{ background: colors.white, borderRadius: '14px', padding: '18px', border: `0.5px solid ${colors.border}`, display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ fontSize: '11px', color: colors.textMuted }}>Total Active Expenses</div>
@@ -169,7 +161,6 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
           </div>
         </div>
 
-        {/* 🧾 BOTTOM ROW: TIMELINES */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)', gap: '14px' }}>
           <div style={{ background: colors.white, borderRadius: '14px', padding: '18px', border: `0.5px solid ${colors.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
@@ -224,7 +215,6 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
         </div>
       </main>
 
-      {/* ─── RIGHT COLUMN: REMOVED DUPLICATE WELCOME ROW & BADGE ─── */}
       <aside style={{ background: colors.white, border: `0.5px solid ${colors.border}`, borderRadius: '14px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '20px', height: 'fit-content' }}>
         <div>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#C0C8C8', marginBottom: '10px' }}>Wallets</div>
@@ -237,7 +227,6 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
           </div>
         </div>
 
-        {/* 🧠 SMART ENGINE INTEGRATION BLOCK */}
         <div style={{ background: 'linear-gradient(135deg, #E8F6F0, #F0FAF6)', borderRadius: '12px', padding: '14px', border: '0.5px solid #9FE1CB' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
             <div style={{ width: '20px', height: '20px', background: '#1D9E75', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

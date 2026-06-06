@@ -37,7 +37,6 @@ const AiAnalysis = () => {
         setMetrics(data);
         setLoading(false);
 
-        // Chart 1: Render dynamic categorical distributions from Pandas frames
         if (barChartRef.current) {
           const ctx = barChartRef.current.getContext('2d');
           barInstance = new Chart(ctx, {
@@ -54,7 +53,6 @@ const AiAnalysis = () => {
           });
         }
 
-        // Chart 2: Projected forecasts using NumPy arrays output tracking
         if (lineChartRef.current) {
           const ctx = lineChartRef.current.getContext('2d');
           lineInstance = new Chart(ctx, {

@@ -37,7 +37,6 @@ function App() {
   path="/dashboard" 
   element={
     <ProtectedRoute>
-      {/* Passing expenses down securely lets Layout populate children analytical tabs */}
       <Layout expenses={expenses} categories={categories}>
          <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />
       </Layout>

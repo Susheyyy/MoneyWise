@@ -153,7 +153,6 @@ const Layout = ({ children }) => {
           <span style={{ fontWeight: activeTab === 'expenses' ? 600 : 500, color: activeTab === 'expenses' ? colors.activeGreen : colors.darkTeal }}>Expenses</span>
         </button>
 
-        {/* INJECTED NEW SELECTION FIELD PATH FOR standalone AI DASHBOARD */}
         <button onClick={() => { setActiveTab('analysis'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'analysis' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
           <IconAnalysis active={activeTab === 'analysis'} />
           <span style={{ fontWeight: activeTab === 'analysis' ? 600 : 500, color: activeTab === 'analysis' ? colors.activeGreen : colors.darkTeal }}>AI Analysis</span>

@@ -9,12 +9,12 @@ exports.getSubscriptions = async (req, res) => {
   }
 };
 
-exports.createSubscription = async (req, res) => { // Add this
+exports.createSubscription = async (req, res) => { 
   try {
     const sub = await Subscription.create({ ...req.body, user: req.user.id });
     res.status(201).json(sub);
   } catch (err) {
-    console.error("DEBUG: Mongoose Error:", err.message); // Add this
+    console.error("DEBUG: Mongoose Error:", err.message); 
     res.status(400).json({ message: err.message });
   }
 };

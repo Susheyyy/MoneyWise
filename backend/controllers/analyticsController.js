@@ -2,10 +2,8 @@ const { spawn } = require('child_process');
 const path = require('path');
 const Transaction = require('../models/Transaction'); 
 
-// FIXED IMPORT STRUCTURAL MAP: Import GoogleGenAI class constructor
 const { GoogleGenAI } = require('@google/generative-ai'); 
 
-// FIXED INITIALIZATION CONFIGURATION: Instantiates via newly specified native parameter syntax
 const aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 exports.generateIntelligenceMetrics = async (req, res) => {
