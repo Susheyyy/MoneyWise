@@ -93,7 +93,7 @@ exports.addSharedExpense = async (req, res) => {
     const totalAmount = Number(amount);
 
     if (splitMode === 'equal') {
-           participantIds = group.members.map(member => member._id ? member._id.toString() : member.toString());
+      participantIds = group.members.map(member => member._id ? member._id.toString() : member.toString());
     } else {
       let rawSplits = splitWith;
 
@@ -113,7 +113,6 @@ exports.addSharedExpense = async (req, res) => {
         return res.status(400).json({ message: 'Missing split allocation breakdown matrix.' });
       }
 
-     
       participantIds = rawSplits.map(item => {
         if (item.user) {
           return item.user._id ? item.user._id.toString() : item.user.toString();
@@ -126,7 +125,7 @@ exports.addSharedExpense = async (req, res) => {
       description: description.trim(),
       amount: totalAmount,
       paidBy: req.user.id,
-      splitWith: participantIds 
+      splitWith: participantIds
     });
 
     if (!group.activityLog) group.activityLog = [];
@@ -139,6 +138,7 @@ exports.addSharedExpense = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
 exports.addMembersAfterFact = async (req, res) => {
   try {
     const { emails } = req.body; 
@@ -222,7 +222,7 @@ exports.getSettlementSummary = async (req, res) => {
       const payer = exp.paidBy.toString();
       if (balances[payer] !== undefined) balances[payer] += exp.amount;
 
-           const splitParticipants = exp.splitWith && exp.splitWith.length > 0 ? exp.splitWith : group.members;
+      const splitParticipants = exp.splitWith && exp.splitWith.length > 0 ? exp.splitWith : group.members;
       const share = exp.amount / splitParticipants.length;
 
       splitParticipants.forEach(userIdObj => {
@@ -276,6 +276,7 @@ exports.getSettlementSummary = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 exports.joinGroupViaLink = async (req, res) => {
   try {
     const { token } = req.params;

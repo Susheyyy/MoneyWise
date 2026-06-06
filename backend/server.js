@@ -20,6 +20,7 @@ app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/groups', require('./routes/groupRoutes'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
 app.use('/api/stats/intelligence', require('./routes/intelligenceRoutes'));
+app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
 app.get('/', (req, res) => {
   res.json({ infrastructure: 'API Running Stable' });

@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/auth/authSlice';
-
 import ExpenseManager from './views/ExpenseManager';
 import RoommateSplitter from './views/RoommateSplitter';
 import SubscriptionVault from './views/SubscriptionVault';
+import ProfileSettings from './views/ProfileSettings';
+import AiAnalysis from './views/AiAnalysis'; 
 
 const Layout = ({ children }) => {
   const dispatch = useDispatch();
@@ -42,10 +43,14 @@ const Layout = ({ children }) => {
         return <div style={{ padding: '24px 32px' }}>{children}</div>; 
       case 'expenses':
         return <div style={{ padding: '24px 32px' }}><ExpenseManager expenses={children?.props?.expenses || []} categories={children?.props?.categories || []} /></div>;
+      case 'analysis':
+        return <AiAnalysis transactions={children?.props?.expenses || []} />;
       case 'shared':
         return <RoommateSplitter />; 
       case 'subscriptions':
         return <div style={{ padding: '24px 32px' }}><SubscriptionVault /></div>; 
+      case 'profile_settings':
+        return <ProfileSettings onBackToDashboard={() => setActiveTab('dashboard')} />;
       case 'goals':
         return <div style={{ padding: '24px 32px', color: colors.darkTeal, fontWeight: 500 }}>Goals module workspace coming soon...</div>;
       default:
@@ -68,6 +73,12 @@ const Layout = ({ children }) => {
   const IconReceipt = ({ active }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? colors.activeGreen : colors.textMuted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M16 8H8M16 12H8M13 16H8" />
+    </svg>
+  );
+
+  const IconAnalysis = ({ active }) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? colors.activeGreen : colors.textMuted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   );
 
@@ -142,6 +153,12 @@ const Layout = ({ children }) => {
           <span style={{ fontWeight: activeTab === 'expenses' ? 600 : 500, color: activeTab === 'expenses' ? colors.activeGreen : colors.darkTeal }}>Expenses</span>
         </button>
 
+        {/* INJECTED NEW SELECTION FIELD PATH FOR standalone AI DASHBOARD */}
+        <button onClick={() => { setActiveTab('analysis'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'analysis' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
+          <IconAnalysis active={activeTab === 'analysis'} />
+          <span style={{ fontWeight: activeTab === 'analysis' ? 600 : 500, color: activeTab === 'analysis' ? colors.activeGreen : colors.darkTeal }}>AI Analysis</span>
+        </button>
+
         <button onClick={() => { setActiveTab('goals'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'goals' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
           <IconTarget active={activeTab === 'goals'} />
           <span style={{ fontWeight: activeTab === 'goals' ? 600 : 500, color: activeTab === 'goals' ? colors.activeGreen : colors.darkTeal }}>Savings Goals</span>
@@ -159,7 +176,14 @@ const Layout = ({ children }) => {
 
         <div style={{ width: '100%', height: '0.5px', backgroundColor: '#E8EEEE', margin: '8px 0' }} />
 
-        <button onClick={() => dispatch(logout())} style={{ width: '100%', height: '40px', borderRadius: '10px', background: 'rgba(163,45,45,0.06)', border: `0.5px solid rgba(163,45,45,0.15)`, display: 'flex', alignItems: 'center', paddingLeft: '14px', marginTop: 'auto', cursor: 'pointer', gap: '12px', outline: 'none' }}>
+        <button 
+          onClick={() => {
+            if (window.confirm('Are you sure you want to sign out?')) {
+              dispatch(logout());
+            }
+          }} 
+          style={{ width: '100%', height: '40px', borderRadius: '10px', background: 'rgba(163,45,45,0.06)', border: `0.5px solid rgba(163,45,45,0.15)`, display: 'flex', alignItems: 'center', paddingLeft: '14px', marginTop: 'auto', cursor: 'pointer', gap: '12px', outline: 'none' }}
+        >
           <IconLogout />
           <span style={{ fontWeight: 600, color: '#A32D2D', fontSize: '12px' }}>Sign Out</span>
         </button>
@@ -189,12 +213,12 @@ const Layout = ({ children }) => {
             </button>
 
             <div 
-              onClick={() => dispatch(logout())} 
-              title={`Logged in as ${user?.name || 'User'} · 🔥 14-day streak`} 
+              onClick={() => setActiveTab('profile_settings')} 
+              title={`Logged in as ${user?.name || 'User'} · Open Settings`} 
               style={{ 
-                width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #364C4F, #233235)', 
+                width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #1D9E75, #4E6E72)', 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: colors.white, 
-                cursor: 'pointer', position: 'relative'
+                cursor: 'pointer', position: 'relative', border: activeTab === 'profile_settings' ? '2px solid #1D9E75' : 'none'
               }}
             >
               {getInitials(user?.name)}
