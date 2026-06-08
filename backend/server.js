@@ -3,12 +3,17 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const groupRoutes = require('./routes/groupRoutes');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
 connectDB();
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000', // Update CORS to allow cookies
+  credentials: true
+}));
+app.use(cookieParser())
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -18,8 +23,6 @@ app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/groups', require('./routes/groupRoutes'));
-app.use('/api/transactions', require('./routes/transactionRoutes'));
-app.use('/api/stats/intelligence', require('./routes/intelligenceRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
 app.get('/', (req, res) => {

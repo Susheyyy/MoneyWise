@@ -7,6 +7,7 @@ import RoommateSplitter from './views/RoommateSplitter';
 import SubscriptionVault from './views/SubscriptionVault';
 import ProfileSettings from './views/ProfileSettings';
 import AiAnalysis from './views/AiAnalysis'; 
+import SavingsGoals from './views/SavingsGoals'; 
 
 const Layout = ({ children }) => {
   const dispatch = useDispatch();
@@ -14,7 +15,12 @@ const Layout = ({ children }) => {
   const { user } = useSelector((state) => state.auth);
   
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(true); // Default to true to pull layout seamlessly like image 2
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  // User Custom Reminders Schedule Configurations (Synced dynamically with settings tab)
+  const [targetReminderDay, setTargetReminderDay] = useState(10);
+  const [hasLoggedMonthlySavings, setHasLoggedMonthlySavings] = useState(false);
 
   const colors = {
     textPrimary: '#1E3336',
@@ -37,6 +43,12 @@ const Layout = ({ children }) => {
     return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
+  // Condition evaluation: Evaluates if current day of month matches or exceeds user preference date
+  const isReminderDayActive = () => {
+    const currentDayOfMonth = new Date().getDate();
+    return currentDayOfMonth >= targetReminderDay;
+  };
+
   const renderActiveViewContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -50,9 +62,15 @@ const Layout = ({ children }) => {
       case 'subscriptions':
         return <div style={{ padding: '24px 32px' }}><SubscriptionVault /></div>; 
       case 'profile_settings':
-        return <ProfileSettings onBackToDashboard={() => setActiveTab('dashboard')} />;
+        return (
+          <ProfileSettings 
+            onBackToDashboard={() => setActiveTab('dashboard')} 
+            reminderDay={targetReminderDay}
+            onUpdateReminderDay={setTargetReminderDay}
+          />
+        );
       case 'goals':
-        return <div style={{ padding: '24px 32px', color: colors.darkTeal, fontWeight: 500 }}>Goals module workspace coming soon...</div>;
+        return <SavingsGoals />;
       default:
         return <div style={{ padding: '24px 32px' }}>{children}</div>;
     }
@@ -125,82 +143,98 @@ const Layout = ({ children }) => {
   );
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: colors.bgLight, fontSize: '13px', fontFamily: "'Montserrat', sans-serif", position: 'relative' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: colors.bgLight, fontSize: '13px', fontFamily: "'Montserrat', sans-serif", display: 'flex', position: 'relative' }}>
       
-      {isDrawerOpen && (
-        <div onClick={() => setIsDrawerOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.2)', zIndex: 998 }} />
-      )}
-
       <nav style={{
-        width: '240px', backgroundColor: colors.white, borderRight: `0.5px solid ${colors.border}`,
-        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '20px 16px', gap: '6px',
-        position: 'fixed', top: 0, bottom: 0, left: isDrawerOpen ? '0' : '-240px', zIndex: 999, transition: 'left 0.25s ease'
+        width: isDrawerOpen ? '240px' : '0px', 
+        backgroundColor: colors.white, 
+        borderRight: isDrawerOpen ? `0.5px solid ${colors.border}` : 'none',
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'flex-start', 
+        padding: isDrawerOpen ? '20px 16px' : '0px', 
+        gap: '6px',
+        position: 'fixed', 
+        top: 0, 
+        bottom: 0, 
+        left: 0, 
+        zIndex: 999, 
+        overflow: 'hidden',
+        transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
-        <div 
-          onClick={() => { setActiveTab('dashboard'); setIsDrawerOpen(false); navigate('/dashboard'); }}
-          style={{ fontFamily: "'Oswald', sans-serif", fontSize: '16px', fontWeight: 600, letterSpacing: '2px', color: colors.darkTeal, marginBottom: '22px', paddingLeft: '14px', textTransform: 'uppercase', cursor: 'pointer' }}
-        >
-          MONEYWISE
-        </div>
+        {isDrawerOpen && (
+          <>
+            <div 
+              onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}
+              style={{ fontFamily: "'Oswald', sans-serif", fontSize: '16px', fontWeight: 600, letterSpacing: '2px', color: colors.darkTeal, marginBottom: '22px', paddingLeft: '14px', textTransform: 'uppercase', cursor: 'pointer' }}
+            >
+              MONEYWISE
+            </div>
 
-        <button onClick={() => { setActiveTab('dashboard'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'dashboard' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
-          <IconDashboard active={activeTab === 'dashboard'} />
-          <span style={{ fontWeight: activeTab === 'dashboard' ? 600 : 500, color: activeTab === 'dashboard' ? colors.activeGreen : colors.darkTeal }}>Dashboard</span>
-        </button>
+            <button onClick={() => setActiveTab('dashboard')} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'dashboard' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
+              <IconDashboard active={activeTab === 'dashboard'} />
+              <span style={{ fontWeight: activeTab === 'dashboard' ? 600 : 500, color: activeTab === 'dashboard' ? colors.activeGreen : colors.darkTeal }}>Dashboard</span>
+            </button>
 
-        <button onClick={() => { setActiveTab('expenses'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'expenses' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
-          <IconReceipt active={activeTab === 'expenses'} />
-          <span style={{ fontWeight: activeTab === 'expenses' ? 600 : 500, color: activeTab === 'expenses' ? colors.activeGreen : colors.darkTeal }}>Expenses</span>
-        </button>
+            <button onClick={() => setActiveTab('expenses')} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'expenses' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
+              <IconReceipt active={activeTab === 'expenses'} />
+              <span style={{ fontWeight: activeTab === 'expenses' ? 600 : 500, color: activeTab === 'expenses' ? colors.activeGreen : colors.darkTeal }}>Expenses</span>
+            </button>
 
-        <button onClick={() => { setActiveTab('analysis'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'analysis' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
-          <IconAnalysis active={activeTab === 'analysis'} />
-          <span style={{ fontWeight: activeTab === 'analysis' ? 600 : 500, color: activeTab === 'analysis' ? colors.activeGreen : colors.darkTeal }}>AI Analysis</span>
-        </button>
+            <button onClick={() => setActiveTab('analysis')} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'analysis' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
+              <IconAnalysis active={activeTab === 'analysis'} />
+              <span style={{ fontWeight: activeTab === 'analysis' ? 600 : 500, color: activeTab === 'analysis' ? colors.activeGreen : colors.darkTeal }}>AI Analysis</span>
+            </button>
 
-        <button onClick={() => { setActiveTab('goals'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'goals' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
-          <IconTarget active={activeTab === 'goals'} />
-          <span style={{ fontWeight: activeTab === 'goals' ? 600 : 500, color: activeTab === 'goals' ? colors.activeGreen : colors.darkTeal }}>Savings Goals</span>
-        </button>
+            <button onClick={() => setActiveTab('goals')} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'goals' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
+              <IconTarget active={activeTab === 'goals'} />
+              <span style={{ fontWeight: activeTab === 'goals' ? 600 : 500, color: activeTab === 'goals' ? colors.activeGreen : colors.darkTeal }}>Savings Goals</span>
+            </button>
 
-        <button onClick={() => { setActiveTab('shared'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'shared' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
-          <IconUsers active={activeTab === 'shared'} />
-          <span style={{ fontWeight: activeTab === 'shared' ? 600 : 500, color: activeTab === 'shared' ? colors.activeGreen : colors.darkTeal }}>Roommate Split</span>
-        </button>
+            <button onClick={() => setActiveTab('shared')} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'shared' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
+              <IconUsers active={activeTab === 'shared'} />
+              <span style={{ fontWeight: activeTab === 'shared' ? 600 : 500, color: activeTab === 'shared' ? colors.activeGreen : colors.darkTeal }}>Roommate Split</span>
+            </button>
 
-        <button onClick={() => { setActiveTab('subscriptions'); setIsDrawerOpen(false); }} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'subscriptions' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
-          <IconRefresh active={activeTab === 'subscriptions'} />
-          <span style={{ fontWeight: activeTab === 'subscriptions' ? 600 : 500, color: activeTab === 'subscriptions' ? colors.activeGreen : colors.darkTeal }}>Subscriptions</span>
-        </button>
+            <button onClick={() => setActiveTab('subscriptions')} style={{ background: 'none', border: 'none', width: '100%', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', paddingLeft: '14px', backgroundColor: activeTab === 'subscriptions' ? colors.activeBg : 'transparent', cursor: 'pointer', gap: '12px', outline: 'none' }}>
+              <IconRefresh active={activeTab === 'subscriptions'} />
+              <span style={{ fontWeight: activeTab === 'subscriptions' ? 600 : 500, color: activeTab === 'subscriptions' ? colors.activeGreen : colors.darkTeal }}>Subscriptions</span>
+            </button>
 
-        <div style={{ width: '100%', height: '0.5px', backgroundColor: '#E8EEEE', margin: '8px 0' }} />
+            <div style={{ width: '100%', height: '0.5px', backgroundColor: '#E8EEEE', margin: '8px 0' }} />
 
-        <button 
-          onClick={() => {
-            if (window.confirm('Are you sure you want to sign out?')) {
-              dispatch(logout());
-            }
-          }} 
-          style={{ width: '100%', height: '40px', borderRadius: '10px', background: 'rgba(163,45,45,0.06)', border: `0.5px solid rgba(163,45,45,0.15)`, display: 'flex', alignItems: 'center', paddingLeft: '14px', marginTop: 'auto', cursor: 'pointer', gap: '12px', outline: 'none' }}
-        >
-          <IconLogout />
-          <span style={{ fontWeight: 600, color: '#A32D2D', fontSize: '12px' }}>Sign Out</span>
-        </button>
+            <button 
+              onClick={() => { if (window.confirm('Are you sure you want to sign out?')) dispatch(logout()); }} 
+              style={{ width: '100%', height: '40px', borderRadius: '10px', background: 'rgba(163,45,45,0.06)', border: `0.5px solid rgba(163,45,45,0.15)`, display: 'flex', alignItems: 'center', paddingLeft: '14px', marginTop: 'auto', cursor: 'pointer', gap: '12px', outline: 'none' }}
+            >
+              <IconLogout />
+              <span style={{ fontWeight: 600, color: '#A32D2D', fontSize: '12px' }}>Sign Out</span>
+            </button>
+          </>
+        )}
       </nav>
 
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {/* CHANGE 1: FLEX CONTAINER REMOVING ALL LEFT WHITE PADDING GAPS */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        flex: 1, 
+        minWidth: 0,
+        paddingLeft: isDrawerOpen ? '240px' : '0px',
+        transition: 'padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+      }}>
         
-        <header style={{ display: 'flex', alignItems: 'center', padding: '13px 22px', backgroundColor: colors.white, borderBottom: `0.5px solid ${colors.border}`, position: 'sticky', top: 0, zIndex: 10 }}>
+        <header style={{ display: 'flex', alignItems: 'center', padding: '13px 32px', backgroundColor: colors.white, borderBottom: `0.5px solid ${colors.border}`, position: 'sticky', top: 0, zIndex: 100, height: '64px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <button onClick={() => setIsDrawerOpen(!isDrawerOpen)} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '4px', borderRadius: '4px', outline: 'none' }}>
               <IconHamburger />
             </button>
-            <span onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }} style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.4rem', fontWeight: 600, color: colors.darkTeal, letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer', userSelect: 'none' }}>
+            <span onClick={() => setActiveTab('dashboard')} style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.4rem', fontWeight: 600, color: colors.darkTeal, letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer', userSelect: 'none' }}>
               MONEYWISE
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto', position: 'relative' }}>
             <div style={{ border: `0.5px solid ${colors.border}`, borderRadius: '20px', padding: '5px 13px', fontSize: '12px', color: colors.darkTeal, fontWeight: 500, backgroundColor: colors.white, display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none' }}>
               <IconCalendar />
               <span>{getActivePeriodString()}</span>
@@ -210,6 +244,66 @@ const Layout = ({ children }) => {
             <button onClick={() => setActiveTab('expenses')} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: colors.darkTeal, color: colors.white, border: 'none', padding: '8px 18px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', outline: 'none' }}>
               <IconPlus />Add expense
             </button>
+
+            {/* CHANGE 2: DISCRETE DROPDOWN HEADER TRIGGER ALIGNMENT */}
+            <button 
+              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              style={{
+                background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '8px', borderRadius: '50%', cursor: 'pointer', color: colors.darkTeal, outline: 'none',
+                backgroundColor: isNotificationOpen ? colors.activeBg : 'transparent', transition: 'background-color 0.2s',
+                position: 'relative'
+              }}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={colors.darkTeal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              {(isReminderDayActive() && !hasLoggedMonthlySavings) && (
+                <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#0F6E56', borderRadius: '50%', border: '1.5px solid #fff' }} />
+              )}
+            </button>
+
+            {/* CHANGE 3: INLINE OVERLAY NOTIFICATION SLIDE CARD RECONSTRUCTION */}
+            {isNotificationOpen && (
+              <>
+                <div onClick={() => setIsNotificationOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 110 }} />
+                <div style={{
+                  position: 'absolute', top: '48px', right: '40px', width: '320px', backgroundColor: colors.white,
+                  borderRadius: '12px', boxShadow: '0 12px 32px rgba(30,51,54,0.14)', border: `1px solid ${colors.border}`,
+                  padding: '20px', zIndex: 111, animation: 'fadeIn 0.15s ease'
+                }}>
+                  {(isReminderDayActive() && !hasLoggedMonthlySavings) ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0F6E56' }} />
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#085041', textTransform: 'uppercase', letterSpacing: '0.5px' }}>MONTHLY LOG</span>
+                      </div>
+                      <div style={{ fontSize: '13px', color: colors.textPrimary, lineHeight: '1.45', fontWeight: 500, marginBottom: '14px' }}>
+                        Have you allocated funds toward your active savings goals for this month?
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => { setHasLoggedMonthlySavings(true); setIsNotificationOpen(false); }} 
+                          style={{ background: '#0F6E56', color: '#fff', border: 'none', padding: '7px 16px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Yes
+                        </button>
+                        <button 
+                          onClick={() => { setActiveTab('goals'); setIsNotificationOpen(false); }} 
+                          style={{ background: 'transparent', color: '#0F6E56', border: '1px solid #0F6E56', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Manage
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '12px 0', textAlign: 'center', color: colors.textMuted, fontSize: '12px' }}>
+                      No active alerts. Scheduled macro reminder metrics current.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             <div 
               onClick={() => setActiveTab('profile_settings')} 

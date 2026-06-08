@@ -37,8 +37,14 @@ function App() {
   path="/dashboard" 
   element={
     <ProtectedRoute>
-      <Layout expenses={expenses} categories={categories}>
-         <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />
+      <Layout expenses={expenses}> 
+        {dynamicSyncLoading ? (
+          <div style={{ padding: '40px', color: '#364C4F', fontWeight: '600' }}>
+            Synchronizing assets...
+          </div>
+        ) : (
+          <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />
+        )}
       </Layout>
     </ProtectedRoute>
   }

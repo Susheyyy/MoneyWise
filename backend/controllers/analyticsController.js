@@ -1,10 +1,8 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const Transaction = require('../models/Transaction'); 
-
-const { GoogleGenAI } = require('@google/generative-ai'); 
-
-const aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const aiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 exports.generateIntelligenceMetrics = async (req, res) => {
   try {
@@ -23,7 +21,7 @@ exports.generateIntelligenceMetrics = async (req, res) => {
       throw new Error(calculatedMetrics.error);
     }
 
-    const textModel = aiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const textModel = aiClient.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const dynamicAiPrompt = `
       You are an expert AI financial advisor. Analyze these raw numeric metrics processed from a user's transaction ledger:
       ${JSON.stringify(calculatedMetrics)}
