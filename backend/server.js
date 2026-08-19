@@ -18,12 +18,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/user', require('./routes/userRoutes'));
 app.use('/api/wallets', require('./routes/walletRoutes'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/groups', require('./routes/groupRoutes'));
+app.use('/api/goals', require('./routes/goalRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/export', require('./routes/exportRoutes'));
 
 app.get('/', (req, res) => {
   res.json({ infrastructure: 'API Running Stable' });

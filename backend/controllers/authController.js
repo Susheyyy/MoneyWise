@@ -136,30 +136,6 @@ exports.logoutUser = async (req, res) => {
   res.status(200).json({ success: true, message: 'Session dropped cleanly.' });
 };
 
-exports.loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-
-    if (user && (await user.matchPassword(password))) {
-      if (!user.isVerified) {
-        return res.status(403).json({ message: 'Workspace blocked: Email verification incomplete.' });
-      }
-
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id)
-      });
-    } else {
-      res.status(401).json({ message: 'Invalid authentication matrix' });
-    }
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
