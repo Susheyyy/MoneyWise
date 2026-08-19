@@ -11,14 +11,23 @@ export const walletApi = createApi({
       providesTags: ['Wallet'],
     }),
     createWallet: builder.mutation({
-      query: (newWallet) => ({
-        url: '/api/wallets',
-        method: 'POST',
-        body: newWallet,
-      }),
+      query: (newWallet) => ({ url: '/api/wallets', method: 'POST', body: newWallet }),
+      invalidatesTags: ['Wallet'],
+    }),
+    updateWallet: builder.mutation({
+      query: ({ id, ...payload }) => ({ url: `/api/wallets/${id}`, method: 'PUT', body: payload }),
+      invalidatesTags: ['Wallet'],
+    }),
+    deleteWallet: builder.mutation({
+      query: (id) => ({ url: `/api/wallets/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Wallet'],
     }),
   }),
 });
 
-export const { useGetWalletsQuery, useCreateWalletMutation } = walletApi;
+export const { 
+  useGetWalletsQuery, 
+  useCreateWalletMutation, 
+  useUpdateWalletMutation, 
+  useDeleteWalletMutation 
+} = walletApi;

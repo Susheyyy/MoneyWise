@@ -76,13 +76,13 @@ const SavingsGoals = () => {
     return true;
   });
 
-  const handleCreateGoal = async (e) => {
+const handleCreateGoal = async (e) => {
     e.preventDefault();
     try {
       await createGoal({
         name: goalName,
         targetAmount: Number(targetAmount),
-        monthlySavingsTarget: Number(monthlySavings),
+        monthlySavings: Number(monthlySavings), // <-- CHANGED TO MATCH FRONTEND HOOK STATE STREAMS
         category,
         startDate,
         targetDate: targetDate || undefined,
@@ -93,10 +93,10 @@ const SavingsGoals = () => {
       setIsNewGoalModalOpen(false);
       setGoalName(''); setTargetAmount(''); setMonthlySavings(''); setNotes('');
     } catch (err) {
+      // Shorthand error logger that intercepts actual raw Mongo validation failures
       triggerToast(err?.data?.message || 'Failed to save new objective vector.');
     }
   };
-
   const handleAddContribution = async (e) => {
     e.preventDefault();
     if (!selectedWalletId) {

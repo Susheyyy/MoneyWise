@@ -21,26 +21,46 @@ exports.generateIntelligenceMetrics = async (req, res) => {
       throw new Error(calculatedMetrics.error);
     }
 
-    const textModel = aiClient.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const dynamicAiPrompt = `
-      You are an expert AI financial advisor. Analyze these raw numeric metrics processed from a user's transaction ledger:
-      ${JSON.stringify(calculatedMetrics)}
+    let structuredRecommendations = [];
+
+    try {
+      // Attempt to hit the live generative AI model instance
+      const textModel = aiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const dynamicAiPrompt = `
+        You are an expert AI financial advisor. Analyze these raw numeric metrics processed from a user's transaction ledger:
+        ${JSON.stringify(calculatedMetrics)}
+        
+        Provide exactly 3 concise, highly actionable bullet point recommendations for their budget optimization.
+        Include a statement indicating any category deviations if applicable, for example: "Food expenses increased by 23% compared to the previous month."
+        Keep your recommendations strictly text-based, direct, short, and remove any emoji markup.
+      `;
+
+      const aiResponseWrapper = await textModel.generateContent({ 
+        contents: [{ role: 'user', parts: [{ text: dynamicAiPrompt }] }] 
+      });
+      const generatedRecommendationsText = aiResponseWrapper.response.text();
+
+      structuredRecommendations = generatedRecommendationsText
+        .split('\n')
+        .map(line => line.replace(/^[*\-\s]+/, '').trim())
+        .filter(Boolean);
+
+    } catch (aiError) {
+      // FALLBACK CORES: Traps 503 / 429 overloads gracefully and maps hard raw statistics vectors
+      console.warn('Gemini Pipeline down (503/Quota Spike). Falling back to rule-based analysis:', aiError.message);
       
-      Provide exactly 3 concise, highly actionable bullet point recommendations for their budget optimization.
-      Include a statement indicating any category deviations if applicable, for example: "Food expenses increased by 23% compared to the previous month."
-      Keep your recommendations strictly text-based, direct, short, and remove any emoji markup.
-    `;
+      structuredRecommendations = [
+        `Financial Health score is currently running stable at ${calculatedMetrics.healthScore}/100 based on active transaction burn cycles.`,
+        calculatedMetrics.percentageSpentIncrease > 0 
+          ? `Food expenses increased by ${calculatedMetrics.percentageSpentIncrease}% compared to the previous month. Consider optimizing micro-orders.`
+          : "Your regular category spending trends map out cleanly inside standard limit boundaries.",
+        calculatedMetrics.anomalies.length > 0
+          ? `Warning: Detected ${calculatedMetrics.anomalies.length} irregular spike outflows exceeding standard baseline deviation limits.`
+          : "No unusual transaction spike anomalies recognized across current ledger entries."
+      ];
+    }
 
-    const aiResponseWrapper = await textModel.generateContent({ 
-      contents: [{ role: 'user', parts: [{ text: dynamicAiPrompt }] }] 
-    });
-    const generatedRecommendationsText = aiResponseWrapper.response.text();
-
-    const structuredRecommendations = generatedRecommendationsText
-      .split('\n')
-      .map(line => line.replace(/^[*\-\s]+/, '').trim())
-      .filter(Boolean);
-
+    // Always respond with valid JSON structure so the frontend continues rendering safely
     res.status(200).json({
       healthScore: calculatedMetrics.healthScore,
       anomalies: calculatedMetrics.anomalies,
@@ -50,7 +70,7 @@ exports.generateIntelligenceMetrics = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('AI Processing Fault Layer Exception:', err.message);
+    console.error('Fatal Analytics Pipeline Fault:', err.message);
     res.status(500).json({ message: 'Failed to process financial metrics models pipelines.' });
   }
 };

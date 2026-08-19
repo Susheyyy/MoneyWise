@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { useGetCategoriesQuery, useUpdateCategoryBudgetMutation } from '../../features/categories/categoryApi';
 
 const ProfileSettings = ({ onBackToDashboard }) => {
+  // CLEANED UP ACCESS LOCK VECTOR STREAMS
   const currentUser = useSelector((state) => state.auth.user);
 
-  const [activeMenu, setActiveMenu] = useState('Profile'); 
+  // DYNAMIC BACKEND STATE INTEGRATION HOOKS
+  const { data: dbCategories = [], isLoading: catsLoading } = useGetCategoriesQuery();
+  const [updateCategoryBudget] = useUpdateCategoryBudgetMutation();
+
+  const [activeMenu, setActiveMenu] = useState('Profile');
 
   const [savedData, setSavedData] = useState({
     firstName: currentUser?.name?.split(' ')[0] || 'Sushmita',
@@ -19,8 +25,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     groupUpdates: true,
     weeklyDigest: false,
     goalMilestones: true,
-    theme: 'Light', 
-    fontSize: 'Default', 
+    theme: 'Light',
+    fontSize: 'Default',
     compactTable: false,
     hideBalance: false,
     budgets: { food: '5000', shopping: '4000', transport: '2000', hostel: '3500', entertainment: '1500', education: '2000', health: '1200' }
@@ -45,12 +51,29 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   const [compactTable, setCompactTable] = useState(savedData.compactTable);
   const [hideBalance, setHideBalance] = useState(savedData.hideBalance);
   
-  const [liveBudgets, setLiveBudgets] = useState({ ...savedData.budgets });
-
+  const [liveBudgets, setLiveBudgets] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
+    if (dbCategories.length > 0) {
+      const budgetMap = {};
+      dbCategories.forEach(cat => {
+        budgetMap[cat._id] = cat.budget.toString();
+      });
+      setLiveBudgets(budgetMap);
+    }
+  }, [dbCategories]);
+
+  useEffect(() => {
+    let budgetModified = false;
+    dbCategories.forEach(cat => {
+      const currentInputValue = liveBudgets[cat._id] || '0';
+      if (currentInputValue !== cat.budget.toString()) {
+        budgetModified = true;
+      }
+    });
+
     const isChanged = 
       firstName !== savedData.firstName ||
       lastName !== savedData.lastName ||
@@ -68,10 +91,10 @@ const ProfileSettings = ({ onBackToDashboard }) => {
       fontSize !== savedData.fontSize ||
       compactTable !== savedData.compactTable ||
       hideBalance !== savedData.hideBalance ||
-      JSON.stringify(liveBudgets) !== JSON.stringify(savedData.budgets);
+      budgetModified;
     
     setHasChanges(isChanged);
-  }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, theme, fontSize, compactTable, hideBalance, liveBudgets, savedData]);
+  }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, theme, fontSize, compactTable, hideBalance, liveBudgets, savedData, dbCategories]);
 
   const uiColors = {
     tealPrimary: '#364C4F',
@@ -90,16 +113,30 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3500);
   };
 
-  const handleSaveChanges = (e) => {
+  const handleSaveChanges = async (e) => {
     e.preventDefault();
-    const updatedMaster = {
-      firstName, lastName, email, phone, institution, city, bio,
-      budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones,
-      theme, fontSize, compactTable, hideBalance, budgets: { ...liveBudgets }
-    };
-    setSavedData(updatedMaster);
-    setHasChanges(false);
-    showNotification('Changes saved successfully.', 'success');
+    try {
+      const updatePromises = dbCategories.map(cat => {
+        const inputVal = liveBudgets[cat._id] || '0';
+        if (inputVal !== cat.budget.toString()) {
+          return updateCategoryBudget({ id: cat._id, budget: Number(inputVal) }).unwrap();
+        }
+        return Promise.resolve();
+      });
+
+      await Promise.all(updatePromises);
+
+      const updatedMaster = {
+        firstName, lastName, email, phone, institution, city, bio,
+        budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones,
+        theme, fontSize, compactTable, hideBalance, budgets: { ...liveBudgets }
+      };
+      setSavedData(updatedMaster);
+      setHasChanges(false);
+      showNotification('Changes saved successfully.', 'success');
+    } catch (err) {
+      showNotification(err?.data?.message || 'Failed to sync budget updates.', 'error');
+    }
   };
 
   const handleDiscardChanges = () => {
@@ -119,13 +156,31 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     setFontSize(savedData.fontSize);
     setCompactTable(savedData.compactTable);
     setHideBalance(savedData.hideBalance);
-    setLiveBudgets({ ...savedData.budgets });
+    
+    const budgetMap = {};
+    dbCategories.forEach(cat => {
+      budgetMap[cat._id] = cat.budget.toString();
+    });
+    setLiveBudgets(budgetMap);
     setHasChanges(false);
     showNotification('Form modifications discarded.', 'success');
   };
 
   const getInitials = () => {
     return `${firstName.substring(0, 1)}${lastName.substring(0, 1)}`.toUpperCase();
+  };
+
+  const mapCategoryDescriptions = (name) => {
+    const descriptions = {
+      'Food': 'Food & dining pool',
+      'Shopping': 'Shopping parameters',
+      'Transport': 'Transport loops',
+      'Hostel': 'Hostel & mess ledger',
+      'Subscriptions': 'Entertainment channels',
+      'Education': 'Education components',
+      'Health': 'Health & fitness metrics'
+    };
+    return descriptions[name] || `${name} configurations`;
   };
 
   return (
@@ -143,10 +198,10 @@ const ProfileSettings = ({ onBackToDashboard }) => {
         justifyContent: 'flex-end', 
         padding: '0 40px', 
         background: uiColors.white, 
-        borderBottom: hasChanges ? `1px solid ${uiColors.border}` : '1px solid transparent', 
+        borderBottom: hasChanges ? `1px solid ${uiColors.border}` : '1px solid transparent',
         position: 'sticky', 
         top: 0, 
-        height: hasChanges ? '64px' : '0px', 
+        height: hasChanges ? '64px' : '0px',
         opacity: hasChanges ? 1 : 0,
         transform: hasChanges ? 'translateY(0)' : 'translateY(-10px)',
         visibility: hasChanges ? 'visible' : 'hidden',
@@ -335,25 +390,31 @@ const ProfileSettings = ({ onBackToDashboard }) => {
           {activeMenu === 'Budgets' && (
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '20px' }}>Monthly Proportions Limits</h3>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {[
-                  { name: 'Food & dining pool', key: 'food', color: '#EF9F27' },
-                  { name: 'Shopping parameters', key: 'shopping', color: '#E24B4A' },
-                  { name: 'Transport loops', key: 'transport', color: '#378ADD' },
-                  { name: 'Hostel & mess ledger', key: 'hostel', color: '#534AB7' },
-                  { name: 'Entertainment channels', key: 'entertainment', color: '#7F77DD' },
-                  { name: 'Education components', key: 'education', color: '#3B6D11' },
-                  { name: 'Health & fitness metrics', key: 'health', color: '#1D9E75' }
-                ].map((b) => (
-                  <div key={b.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${uiColors.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color }} />
-                      <span style={{ fontSize: '13px', fontWeight: 500, color: uiColors.tealDark }}>{b.name}</span>
+              {catsLoading ? (
+                <div style={{ fontSize: '12px', color: uiColors.textMuted }}>Pulling server budget maps...</div>
+              ) : dbCategories.length === 0 ? (
+                <div style={{ fontSize: '12px', color: uiColors.textMuted }}>No category configurations located on server. Create one first.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {dbCategories.map((cat) => (
+                    <div key={cat._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${uiColors.border}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: cat.color || '#6B8B8E' }} />
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: uiColors.tealDark }}>{mapCategoryDescriptions(cat.name)}</span>
+                      </div>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ position: 'absolute', left: '12px', fontSize: '12px', fontFamily: "'Oswald', sans-serif", fontWeight: 600, color: uiColors.tealDark }}>₹</span>
+                        <input 
+                          type="text" 
+                          value={liveBudgets[cat._id] || ''} 
+                          onChange={(e) => setLiveBudgets({ ...liveBudgets, [cat._id]: e.target.value.replace(/[^0-9]/g, '') })} 
+                          style={{ width: '110px', padding: '6px 12px 6px 22px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '12px', fontFamily: "'Oswald', sans-serif", fontWeight: 600, color: uiColors.tealDark, outline: 'none', textAlign: 'right', background: '#FAFCFC', boxSizing: 'border-box' }} 
+                        />
+                      </div>
                     </div>
-                    <input type="text" value={`₹${liveBudgets[b.key] || ''}`} onChange={(e) => setLiveBudgets({ ...liveBudgets, [b.key]: e.target.value.replace(/[^0-9]/g, '') })} style={{ width: '110px', padding: '6px 12px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '12px', fontFamily: "'Oswald', sans-serif", fontWeight: 600, color: uiColors.tealDark, outline: 'none', textAlign: 'right', background: '#FAFCFC' }} />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -383,13 +444,13 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                   ].map(t => {
                     const isThemeSelected = theme === t.id;
                     return (
-                      <div 
+                      <div
                         key={t.id}
                         onClick={() => setTheme(t.id)}
-                        style={{ 
-                          border: `1.5px solid ${isThemeSelected ? '#1D9E75' : uiColors.border}`, 
-                          borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: '#fff', 
-                          display: 'flex', flexDirection: 'column', height: '88px', transition: 'border-color 0.2s' 
+                        style={{
+                          border: `1.5px solid ${isThemeSelected ? '#1D9E75' : uiColors.border}`,
+                          borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: '#fff',
+                          display: 'flex', flexDirection: 'column', height: '88px', transition: 'border-color 0.2s'
                         }}
                       >
                         <div style={{ flex: 1, background: t.innerBg, padding: '10px', position: 'relative' }}>
@@ -412,13 +473,13 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                   {['Small', 'Default', 'Large'].map(size => {
                     const isFontSelected = fontSize === size;
                     return (
-                      <div 
+                      <div
                         key={size}
                         onClick={() => setFontSize(size)}
-                        style={{ 
-                          border: `1.5px solid ${isFontSelected ? '#1D9E75' : uiColors.border}`, 
-                          background: isFontSelected ? '#E1F5EE' : '#fff', borderRadius: '8px', 
-                          padding: '14px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' 
+                        style={{
+                          border: `1.5px solid ${isFontSelected ? '#1D9E75' : uiColors.border}`,
+                          background: isFontSelected ? '#E1F5EE' : '#fff', borderRadius: '8px',
+                          padding: '14px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s'
                         }}
                       >
                         <div style={{ fontSize: size === 'Small' ? '14px' : size === 'Large' ? '22px' : '18px', fontWeight: 700, color: uiColors.tealDark }}>A</div>
@@ -430,7 +491,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: `1px solid ${uiColors.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between', padding: '16px 0', borderBottom: `1px solid ${uiColors.border}` }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Compact table view</div>
                     <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>Reduce row height in transaction list sheet rows</div>
@@ -440,7 +501,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between', padding: '16px 0' }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Hide balance by default</div>
                     <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>Mask amount fields until explicitly tapped — privacy protection profile mode</div>
@@ -465,7 +526,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Settings</h3>
               <p style={{ color: uiColors.textMuted, fontSize: '12px', marginBottom: '24px' }}>Manage system security runtime access profiles or discharge credentials context locks cleanly.</p>
               
-              <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '8px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFFDFD' }}>
+              <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '8px', padding: '16px', display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between', background: '#FFFDFD' }}>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: '#A32D2D' }}>Terminate account access profile session</div>
                   <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>Clears local encrypted authorization storage vectors to sign out.</div>
