@@ -25,11 +25,48 @@ export const transactionApi = createApi({
       }),
       invalidatesTags: ['Transaction', 'Summary'],
     }),
+    updateTransaction: builder.mutation({
+      query: ({ id, ...updatedTxn }) => ({
+        url: `/api/transactions/${id}`,
+        method: 'PUT',
+        body: updatedTxn,
+      }),
+      invalidatesTags: ['Transaction', 'Summary'],
+    }),
+    deleteTransaction: builder.mutation({
+      query: (id) => ({
+        url: `/api/transactions/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Transaction', 'Summary'],
+    }),
+    getMonthlySummary: builder.query({
+      query: () => '/api/transactions/stats/monthly',
+      providesTags: ['Summary'],
+    }),
+    getCategoryBreakdown: builder.query({
+      query: () => '/api/transactions/stats/category',
+      providesTags: ['Summary'],
+    }),
+    getWalletDistribution: builder.query({
+      query: () => '/api/transactions/stats/wallet',
+      providesTags: ['Summary'],
+    }),
     getIntelligenceStats: builder.query({
-  query: () => '/api/stats/intelligence',
-  providesTags: ['Transaction'], 
-}),
+      query: () => '/api/analytics/ai-insights',
+      providesTags: ['Transaction'], 
+    }),
   }),
 });
 
-export const { useGetTransactionsQuery, useGetSummaryQuery, useAddTransactionMutation, useGetIntelligenceStatsQuery } = transactionApi;
+export const {
+  useGetTransactionsQuery,
+  useGetSummaryQuery,
+  useAddTransactionMutation,
+  useUpdateTransactionMutation,
+  useDeleteTransactionMutation,
+  useGetMonthlySummaryQuery,
+  useGetCategoryBreakdownQuery,
+  useGetWalletDistributionQuery,
+  useGetIntelligenceStatsQuery
+} = transactionApi;

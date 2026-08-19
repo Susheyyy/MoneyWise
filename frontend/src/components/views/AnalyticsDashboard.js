@@ -1,10 +1,20 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { useGetIntelligenceStatsQuery } from '../../features/transactions/transactionApi';
+import { 
+  useGetIntelligenceStatsQuery, 
+  useGetMonthlySummaryQuery, 
+  useGetCategoryBreakdownQuery 
+} from '../../features/transactions/transactionApi';
+import { Chart as ChartJS, registerables } from 'chart.js';
+import { Pie, Line } from 'react-chartjs-2';
+
+ChartJS.register(...registerables);
 
 const AnalyticsDashboard = ({ summary, expenses, categories }) => {
   const { user } = useSelector((state) => state.auth);
   const { data: intelligence, isLoading } = useGetIntelligenceStatsQuery();
+  const { data: monthlySummary } = useGetMonthlySummaryQuery();
+  const { data: categoryBreakdown } = useGetCategoryBreakdownQuery();
 
   if (isLoading) {
     return <div style={{ padding: '40px', color: '#364C4F', fontWeight: '600' }}>Synchronizing intelligence matrix...</div>;
@@ -35,6 +45,41 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
 
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  };
+
+  const lineLabels = [...new Set(monthlySummary?.map(item => `${item._id.month}/${item._id.year}`))];
+  const lineChartData = {
+    labels: lineLabels,
+    datasets: [
+      {
+        label: 'Income',
+        data: lineLabels.map(label => {
+          const item = monthlySummary?.find(m => `${m._id.month}/${m._id.year}` === label && m._id.type === 'income');
+          return item ? item.total : 0;
+        }),
+        borderColor: colors.green,
+        backgroundColor: colors.green,
+      },
+      {
+        label: 'Expense',
+        data: lineLabels.map(label => {
+          const item = monthlySummary?.find(m => `${m._id.month}/${m._id.year}` === label && m._id.type === 'expense');
+          return item ? item.total : 0;
+        }),
+        borderColor: colors.red,
+        backgroundColor: colors.red,
+      }
+    ]
+  };
+
+  const pieChartData = {
+    labels: categoryBreakdown?.map(item => item.name) || [],
+    datasets: [
+      {
+        data: categoryBreakdown?.map(item => item.total) || [],
+        backgroundColor: categoryBreakdown?.map(item => item.color || '#cccccc') || [],
+      }
+    ]
   };
 
   const IconTrendingDown = () => (
@@ -111,26 +156,18 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
 
           <div style={{ background: colors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${colors.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E3336' }}>Spending by category</span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E3336' }}>Monthly Trend</span>
             </div>
-            <div style={{ fontSize: '11px', color: colors.textMuted, marginBottom: '16px' }}>Live user distribution vectors</div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-              {categories.slice(0, 4).map((cat, idx) => {
-                const spent = categorySpentMap[cat._id] || 0;
-                const pct = totalExpenses > 0 ? Math.round((spent / totalExpenses) * 100) : 0;
-                const catColors = ['#E24B4A', '#EF9F27', '#378ADD', '#7F77DD'];
-                
-                return (
-                  <div key={cat._id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', flexShrink: 0, backgroundColor: catColors[idx % 4] }} />
-                    <span style={{ fontSize: '12px', color: '#364C4F', flex: 1 }}>{cat.name}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#1E3336', fontFamily: "'Oswald', sans-serif" }}>
-                      ₹{spent.toLocaleString('en-IN')}<span style={{ fontSize: '10px', color: colors.textMuted, marginLeft: '3px', fontWeight: 400 }}>{pct}%</span>
-                    </span>
-                  </div>
-                );
-              })}
+            <div style={{ fontSize: '11px', color: colors.textMuted, marginBottom: '16px' }}>Income vs Expense</div>
+            <div style={{ height: '200px' }}>
+              {monthlySummary ? (
+                <Line 
+                  data={lineChartData} 
+                  options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} 
+                />
+              ) : (
+                <div style={{ fontSize: '12px', color: colors.textMuted }}>No data available</div>
+              )}
             </div>
           </div>
         </div>
@@ -162,6 +199,24 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)', gap: '14px' }}>
+          
+          <div style={{ background: colors.white, borderRadius: '14px', padding: '18px', border: `0.5px solid ${colors.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E3336' }}>Category Breakdown</span>
+            </div>
+            
+            <div style={{ height: '250px' }}>
+              {categoryBreakdown?.length > 0 ? (
+                <Pie 
+                  data={pieChartData} 
+                  options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }} 
+                />
+              ) : (
+                <div style={{ fontSize: '12px', color: colors.textMuted }}>No categories data</div>
+              )}
+            </div>
+          </div>
+
           <div style={{ background: colors.white, borderRadius: '14px', padding: '18px', border: `0.5px solid ${colors.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E3336' }}>Recent activity</span>
@@ -188,30 +243,6 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
             </div>
           </div>
 
-          <div style={{ background: colors.white, borderRadius: '14px', padding: '18px', border: `0.5px solid ${colors.border}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E3336' }}>Budget pulse</span>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {categories.slice(0, 4).map((cat) => {
-                const spent = categorySpentMap[cat._id] || 0;
-                const ratio = cat.budget > 0 ? Math.min((spent / cat.budget) * 100, 100) : 0;
-                
-                return (
-                  <div key={cat._id}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 500, color: '#1E3336' }}>{cat.name}</span>
-                      <span style={{ fontSize: '11px', color: colors.textMuted }}>₹{spent} / ₹{cat.budget}</span>
-                    </div>
-                    <div style={{ height: '5px', background: '#EEF2F2', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: '3px', width: `${ratio}%`, backgroundColor: ratio > 85 ? colors.red : colors.green }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </main>
 

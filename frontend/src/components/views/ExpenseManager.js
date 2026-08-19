@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import {
   useGetTransactionsQuery,
-  useAddTransactionMutation 
+  useAddTransactionMutation,
+  useDeleteTransactionMutation
 } from '../../features/transactions/transactionApi';
 
 const ExpenseManager = () => {
@@ -10,6 +11,7 @@ const ExpenseManager = () => {
   
   const { data: expensesData = [], refetch } = useGetTransactionsQuery();
   const [addTransaction] = useAddTransactionMutation(); 
+  const [deleteTransaction] = useDeleteTransactionMutation();
 
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,8 +139,15 @@ const ExpenseManager = () => {
     }
   };
 
-  const handleDeleteStub = (id) => {
-    showNotification('Deletion requires deleteTransaction mutation implementation inside transactionApi.', 'error');
+  const handleDeleteStub = async (id) => {
+    try {
+      await deleteTransaction(id).unwrap();
+      showNotification('Transaction deleted successfully.', 'success');
+      setIsPanelOpen(false);
+      setSelectedTxn(null);
+    } catch (err) {
+      showNotification(err?.data?.message || 'Error deleting transaction.', 'error');
+    }
   };
 
   const totalIncome = expensesData.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
