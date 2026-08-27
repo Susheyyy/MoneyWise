@@ -7,15 +7,17 @@ const aiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 exports.generateIntelligenceMetrics = async (req, res) => {
   try {
     const transactions = await Transaction.find({ user: req.user.id }).lean();
-    const pythonScriptPath = path.join(__dirname, '../analytics/engine.py');
-    const pythonProcess = spawn('python', [pythonScriptPath, JSON.stringify(transactions)]);
+    const flaskResponse = await fetch('http://127.0.0.1:5001/api/intelligence/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(transactions)
+    });
 
-    let pythonDataString = '';
-    for await (const chunk of pythonProcess.stdout) {
-      pythonDataString += chunk;
+    if (!flaskResponse.ok) {
+      throw new Error(`Flask service returned status ${flaskResponse.status}`);
     }
 
-    const calculatedMetrics = JSON.parse(pythonDataString.trim());
+    const calculatedMetrics = await flaskResponse.json();
 
     if (calculatedMetrics.error) {
       throw new Error(calculatedMetrics.error);
