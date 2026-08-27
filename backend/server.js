@@ -27,6 +27,7 @@ app.use('/api/groups', require('./routes/groupRoutes'));
 app.use('/api/goals', require('./routes/goalRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
+app.use('/api/college/mess', require('./routes/messRoutes'));
 
 app.get('/', (req, res) => {
   res.json({ infrastructure: 'API Running Stable' });
