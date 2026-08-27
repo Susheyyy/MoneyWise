@@ -17,7 +17,12 @@ exports.generateIntelligenceMetrics = async (req, res) => {
       throw new Error(`Flask service returned status ${flaskResponse.status}`);
     }
 
-    const calculatedMetrics = await flaskResponse.json();
+    let calculatedMetrics;
+    try {
+      calculatedMetrics = await flaskResponse.json();
+    } catch (e) {
+      throw new Error('Flask service returned invalid JSON. Possible server crash.');
+    }
 
     if (calculatedMetrics.error) {
       throw new Error(calculatedMetrics.error);
