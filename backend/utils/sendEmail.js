@@ -17,14 +17,23 @@ const sendEmail = async (options) => {
     subject: options.subject,
     text: options.message,
     html: `<div style="font-family: 'Montserrat', sans-serif; color: #364C4F; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid rgba(54,76,79,0.12); border-radius: 8px;">
-            <h2 style="font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 2px; color: #364C4F; text-align: center; border-bottom: 2px solid #384C4F; padding-bottom: 10px;">MoneyWise Security Verification</h2>
+            <h2 style="font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 2px; color: #364C4F; text-align: center; border-bottom: 2px solid #384C4F; padding-bottom: 10px;">MoneyWise Account Verification</h2>
             <p style="margin-top: 20px; font-size: 1rem; line-height: 1.6;">Hello ${options.name},</p>
-            <p style="font-size: 0.9rem; line-height: 1.6; color: #6B8B8E;">Welcome to MoneyWise. Use the secure verification blueprint code token below to authorize your student finance workspace dashboard account profile:</p>
+            <p style="font-size: 0.9rem; line-height: 1.6; color: #6B8B8E;">Use the code below to verify your MoneyWise account and continue:</p>
             <div style="background: #F2F5F5; padding: 15px; border-radius: 4px; text-align: center; font-size: 2rem; font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 6px; color: #364C4F; margin: 25px 0;">
               ${options.code}
             </div>
-            <p style="font-size: 0.78rem; color: #A7A7A9; text-align: center;">This security session token vector expires in 15 minutes.</p>
-          </div>`
+            <p style="font-size: 0.78rem; color: #A7A7A9; text-align: center;">This code expires in 15 minutes</p>
+          
+      <p style="font-size: 0.9rem; line-height: 1.6; color: #6B8B8E; margin-top: 25px;">
+        If you didn&apos;t request a verification code, you can ignore this email. Your account is still secure.
+      </p>
+
+      <p style="font-size: 0.9rem; line-height: 1.6; margin-top: 25px;">
+        Thanks,<br>
+        <strong>Team MoneyWise</strong>
+      </p>
+            </div>`
   };
 
   await transporter.sendMail(mailOptions);

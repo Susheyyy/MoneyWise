@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useGetCategoriesQuery, useUpdateCategoryBudgetMutation } from '../../features/categories/categoryApi';
+import { getErrorMessage } from '../../utils/errorHandler';
+import { useTheme } from '../../context/ThemeContext';
 
 const ProfileSettings = ({ onBackToDashboard }) => {
   // CLEANED UP ACCESS LOCK VECTOR STREAMS
@@ -9,6 +11,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   // DYNAMIC BACKEND STATE INTEGRATION HOOKS
   const { data: dbCategories = [], isLoading: catsLoading } = useGetCategoriesQuery();
   const [updateCategoryBudget] = useUpdateCategoryBudgetMutation();
+  const { theme, setTheme, fontSize, setFontSize } = useTheme();
 
   const [activeMenu, setActiveMenu] = useState('Profile');
 
@@ -25,8 +28,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     groupUpdates: true,
     weeklyDigest: false,
     goalMilestones: true,
-    theme: 'Light',
-    fontSize: 'Default',
     compactTable: false,
     hideBalance: false,
     budgets: { food: '5000', shopping: '4000', transport: '2000', hostel: '3500', entertainment: '1500', education: '2000', health: '1200' }
@@ -46,8 +47,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   const [weeklyDigest, setWeeklyDigest] = useState(savedData.weeklyDigest);
   const [goalMilestones, setGoalMilestones] = useState(savedData.goalMilestones);
   
-  const [theme, setTheme] = useState(savedData.theme);
-  const [fontSize, setFontSize] = useState(savedData.fontSize);
   const [compactTable, setCompactTable] = useState(savedData.compactTable);
   const [hideBalance, setHideBalance] = useState(savedData.hideBalance);
   
@@ -87,14 +86,12 @@ const ProfileSettings = ({ onBackToDashboard }) => {
       groupUpdates !== savedData.groupUpdates ||
       weeklyDigest !== savedData.weeklyDigest ||
       goalMilestones !== savedData.goalMilestones ||
-      theme !== savedData.theme ||
-      fontSize !== savedData.fontSize ||
       compactTable !== savedData.compactTable ||
       hideBalance !== savedData.hideBalance ||
       budgetModified;
     
     setHasChanges(isChanged);
-  }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, theme, fontSize, compactTable, hideBalance, liveBudgets, savedData, dbCategories]);
+  }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, compactTable, hideBalance, liveBudgets, savedData, dbCategories]);
 
   const uiColors = {
     tealPrimary: '#364C4F',
@@ -129,13 +126,13 @@ const ProfileSettings = ({ onBackToDashboard }) => {
       const updatedMaster = {
         firstName, lastName, email, phone, institution, city, bio,
         budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones,
-        theme, fontSize, compactTable, hideBalance, budgets: { ...liveBudgets }
+        compactTable, hideBalance, budgets: { ...liveBudgets }
       };
       setSavedData(updatedMaster);
       setHasChanges(false);
       showNotification('Changes saved successfully.', 'success');
     } catch (err) {
-      showNotification(err?.data?.message || 'Failed to sync budget updates.', 'error');
+      showNotification(getErrorMessage(err, 'Failed to sync budget updates.'), 'error');
     }
   };
 
@@ -152,8 +149,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     setGroupUpdates(savedData.groupUpdates);
     setWeeklyDigest(savedData.weeklyDigest);
     setGoalMilestones(savedData.goalMilestones);
-    setTheme(savedData.theme);
-    setFontSize(savedData.fontSize);
     setCompactTable(savedData.compactTable);
     setHideBalance(savedData.hideBalance);
     

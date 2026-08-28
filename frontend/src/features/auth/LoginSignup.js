@@ -9,6 +9,7 @@ import {
   useResetPasswordMutation 
 } from './authApi';
 import { setCredentials } from './authSlice';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const LoginSignup = ({ initialIsLogin = true }) => {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
         setViewState('verify_email');
       }
     } catch (err) {
-      triggerToast(err?.data?.message || 'Authentication processing fault. Try again.');
+      triggerToast(getErrorMessage(err, 'Authentication processing fault. Try again.'));
     }
   };
 
@@ -92,7 +93,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
-      triggerToast(err?.data?.message || 'Verification rejected. Please re-check your inbox pin.');
+      triggerToast(getErrorMessage(err, 'Verification rejected. Please re-check your inbox pin.'));
     }
   };
 
@@ -104,7 +105,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
       triggerToast('Recovery code token dispatched to your inbox!', 'success');
       setViewState('forgot_reset');
     } catch (err) {
-      triggerToast(err?.data?.message || 'Failed to dispatch password recovery code.');
+      triggerToast(getErrorMessage(err, 'Failed to dispatch password recovery code.'));
     }
   };
 
@@ -136,9 +137,9 @@ const LoginSignup = ({ initialIsLogin = true }) => {
       triggerToast('Password rewritten successfully! Please sign in.', 'success');
       setFormData({ name: '', email: '', password: '', confirmPassword: '' });
       setRecoveryCode('');
-      setViewState('login');
+      setTimeout(() => setViewState('login'), 2000);
     } catch (err) {
-      triggerToast(err?.data?.message || 'Failed to rewrite security password records.');
+      triggerToast(getErrorMessage(err, 'Failed to rewrite security password records.'));
     }
   };
 

@@ -4,11 +4,10 @@ const User = require('../models/User');
 const protect = async (req, res, next) => {
   let token;
 
-  // Intercept token from HTTP cookies headers array
   if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   } 
-  // Fallback support for Bearer headers if needed during testing
+
   else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
   }

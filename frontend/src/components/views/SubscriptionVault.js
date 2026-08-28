@@ -6,6 +6,7 @@ import {
   useDeleteSubscriptionMutation,
   useEditSubscriptionMutation
 } from '../../features/subscriptions/subscriptionApi';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const SubscriptionRow = ({ sub, colors, mapCategoryIcons, getCategoryThemeColor, getDaysRemainingText, toggleStatus, handleInitiateEditMode, setDeleteTargetId }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -178,7 +179,7 @@ const SubscriptionVault = () => {
       }
       handleFormReset();
     } catch (err) {
-      showNotification(err?.data?.message || 'Server rejected subscription layout parameters.', 'error');
+      showNotification(getErrorMessage(err, 'Server rejected subscription layout parameters.'), 'error');
     }
   };
 

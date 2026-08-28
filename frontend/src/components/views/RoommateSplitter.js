@@ -9,6 +9,7 @@ import {
   useEditGroupMetadataMutation,
   useRemoveGroupMatrixMutation
 } from '../../features/groups/groupApi';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const RoommateSplitter = () => {
   const currentUser = useSelector((state) => state.auth.user);
@@ -121,7 +122,7 @@ const RoommateSplitter = () => {
       setStagedEmails([]);
       refetch();
     } catch (err) { 
-      showNotification(err?.data?.message || 'Error configuring group workspace.', 'error');
+      showNotification(getErrorMessage(err, 'Error configuring group workspace.'), 'error');
     }
   };
 
@@ -135,7 +136,7 @@ const RoommateSplitter = () => {
       setShowEditModal(false);
       refetch();
     } catch (err) {
-      showNotification(err?.data?.message || 'Error updating member lists.', 'error');
+      showNotification(getErrorMessage(err, 'Error updating member lists.'), 'error');
     }
   };
 
@@ -148,7 +149,7 @@ const RoommateSplitter = () => {
       setShowEditModal(false);
       refetch();
     } catch (err) {
-      showNotification(err?.data?.message || 'Failed modification routine.', 'error');
+      showNotification(getErrorMessage(err, 'Failed modification routine.'), 'error');
     }
   };
 
@@ -161,7 +162,7 @@ const RoommateSplitter = () => {
       setActiveGroupId('');
       refetch();
     } catch (err) {
-      showNotification(err?.data?.message || 'Deletion prohibited.', 'error');
+      showNotification(getErrorMessage(err, 'Deletion prohibited.'), 'error');
     }
   };
 
@@ -216,7 +217,7 @@ const RoommateSplitter = () => {
       refetch();
     } catch (err) { 
       console.error(err);
-      showNotification(err?.data?.message || 'Could not post shared split.', 'error');
+      showNotification(getErrorMessage(err, 'Could not post shared split.'), 'error');
     }
   };
 

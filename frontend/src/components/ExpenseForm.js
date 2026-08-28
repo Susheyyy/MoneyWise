@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAddTransactionMutation } from '../features/transactions/transactionApi';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const ExpenseForm = ({ categories = [], wallets = [] }) => {
   const [addTransaction] = useAddTransactionMutation();
@@ -25,7 +26,7 @@ const ExpenseForm = ({ categories = [], wallets = [] }) => {
       }).unwrap();
       setFormData({ ...formData, description: '', amount: '' });
     } catch (err) {
-      alert(err?.data?.message || 'Failed to submit transaction');
+      alert(getErrorMessage(err, 'Failed to submit transaction'));
     }
   };
 

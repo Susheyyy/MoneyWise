@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useJoinGroupViaLinkMutation } from '../../features/groups/groupApi';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const JoinGroupLanding = () => {
   const { token } = useParams();
@@ -19,7 +20,7 @@ const JoinGroupLanding = () => {
       } catch (err) {
         setStatus({ 
           type: 'error', 
-          message: err?.data?.message || 'This invite link is invalid, broken, or has expired.' 
+          message: getErrorMessage(err, 'This invite link is invalid, broken, or has expired.') 
         });
       }
     };

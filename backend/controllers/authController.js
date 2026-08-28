@@ -2,19 +2,17 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail');
 
-// Helper to sign the payload token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
-// Helper to securely drop HttpOnly Cookie vector
 const sendTokenCookie = (user, statusCode, res, message, extraData = {}) => {
   const token = generateToken(user._id);
 
   const cookieOptions = {
-    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    httpOnly: true, // Blocks client-side scripts from scraping token (Anti-XSS)
-    secure: process.env.NODE_ENV === 'production', // Only sends via HTTPS in production
+    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 
+    httpOnly: true, 
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict'
   };
 
@@ -51,7 +49,6 @@ exports.registerUser = async (req, res) => {
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const codeExpires = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Security Hashing note: Bcrypt is automatically executed pre-save via userSchema
     const user = await User.create({
       name,
       email,
@@ -65,7 +62,7 @@ exports.registerUser = async (req, res) => {
       await sendEmail({
         email: user.email,
         name: user.name,
-        subject: '🔐 MoneyWise Account Verification Code Vector',
+        subject: 'MoneyWise Account Verification Code',
         code: verificationCode
       });
 
@@ -101,7 +98,6 @@ exports.verifyEmail = async (req, res) => {
     user.verificationCodeExpires = null;
     await user.save();
 
-    // Securely issue HttpOnly cookie
     sendTokenCookie(user, 200, res, 'Email channel validation successful.');
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -118,7 +114,6 @@ exports.loginUser = async (req, res) => {
         return res.status(403).json({ message: 'Workspace blocked: Email verification incomplete.' });
       }
 
-      // Securely issue HttpOnly cookie
       sendTokenCookie(user, 200, res, 'Authentication verified!');
     } else {
       res.status(401).json({ message: 'Invalid authentication matrix' });
@@ -152,11 +147,11 @@ exports.forgotPassword = async (req, res) => {
     await sendEmail({
       email: user.email,
       name: user.name,
-      subject: '🔐 MoneyWise Password Recovery Token',
+      subject: 'MoneyWise Password Recovery Code',
       code: recoveryCode
     });
 
-    res.status(200).json({ success: true, message: 'Recovery code vector dispatched.' });
+    res.status(200).json({ success: true, message: 'Recovery code sent.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import {
   useGetTransactionsQuery,
   useAddTransactionMutation,
   useDeleteTransactionMutation
 } from '../../features/transactions/transactionApi';
+import { useTheme } from '../../context/ThemeContext';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const ExpenseManager = () => {
   const currentUser = useSelector((state) => state.auth.user);
@@ -12,6 +14,8 @@ const ExpenseManager = () => {
   const { data: expensesData = [], refetch } = useGetTransactionsQuery();
   const [addTransaction] = useAddTransactionMutation(); 
   const [deleteTransaction] = useDeleteTransactionMutation();
+
+  const { colors, fontSizeMultiplier } = useTheme();
 
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,31 +39,15 @@ const ExpenseManager = () => {
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  const uiColors = {
-    tealPrimary: '#364C4F',
-    tealDark: '#1E3336',
-    border: '#E3ECEC',
-    white: '#ffffff',
-    bgMain: '#F2F4F3',
-    greenText: '#3B6D11',
-    greenBg: '#EAF3DE',
-    redText: '#A32D2D',
-    redBg: '#FCEBEB',
-    accentGreen: '#1D9E75',
-    textMuted: '#9BB5B8',
-    chipActiveBg: '#E1F5EE',
-    chipActiveText: '#085041'
-  };
-
   const categories = [
     { name: 'Shopping', icon: 'ti-shopping-bag', color: '#854F0B', bg: '#FAEEDA' },
     { name: 'Food', icon: 'ti-motorbike', color: '#854F0B', bg: '#FAEEDA' },
     { name: 'Transport', icon: 'ti-car', color: '#185FA5', bg: '#E6F1FB' },
     { name: 'Hostel', icon: 'ti-school', color: '#534AB7', bg: '#EEEDFE' },
-    { name: 'Subscriptions', icon: 'ti-device-tv', color: '#A32D2D', bg: '#FCEBEB' },
-    { name: 'Health', icon: 'ti-heart', color: '#A32D2D', bg: '#FCEBEB' },
-    { name: 'Education', icon: 'ti-book', color: '#3B6D11', bg: '#EAF3DE' },
-    { name: 'Other', icon: 'ti-dots', color: '#6B8B8E', bg: '#FAFCFC' }
+    { name: 'Subscriptions', icon: 'ti-device-tv', color: colors.red, bg: `${colors.red}1A` },
+    { name: 'Health', icon: 'ti-heart', color: colors.red, bg: `${colors.red}1A` },
+    { name: 'Education', icon: 'ti-book', color: colors.green, bg: `${colors.green}1A` },
+    { name: 'Other', icon: 'ti-dots', color: colors.textMuted, bg: colors.bgLight }
   ];
 
   const paymentModes = ['GPay', 'Card', 'Cash', 'Bank', 'UPI'];
@@ -135,7 +123,7 @@ const ExpenseManager = () => {
       setIsShared(false);
       refetch();
     } catch (err) {
-      showNotification(err?.data?.message || 'Error executing ledger post request.', 'error');
+      showNotification(getErrorMessage(err, 'Error executing ledger post request.'), 'error');
     }
   };
 
@@ -146,7 +134,7 @@ const ExpenseManager = () => {
       setIsPanelOpen(false);
       setSelectedTxn(null);
     } catch (err) {
-      showNotification(err?.data?.message || 'Error deleting transaction.', 'error');
+      showNotification(getErrorMessage(err, 'Error deleting transaction.'), 'error');
     }
   };
 
@@ -173,199 +161,201 @@ const ExpenseManager = () => {
   });
 
   return (
-    <div style={{ background: uiColors.bgMain, minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Montserrat', sans-serif" }}>
+    <div style={{ background: colors.background, minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Montserrat', sans-serif" }}>
       
       {toast.show && (
-        <div style={{ position: 'fixed', top: '84px', right: '24px', background: toast.type === 'success' ? '#E1F5EE' : uiColors.redBg, borderLeft: `4px solid ${toast.type === 'success' ? '#0F6E56' : uiColors.redText}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(30,51,54,0.12)', zIndex: 10000, color: toast.type === 'success' ? '#085041' : uiColors.redText, fontWeight: 600, fontSize: '0.85rem' }}>
+        <div style={{ position: 'fixed', top: '84px', right: '24px', background: toast.type === 'success' ? `${colors.green}1A` : `${colors.red}1A`, borderLeft: `4px solid ${toast.type === 'success' ? colors.green : colors.red}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 10000, color: toast.type === 'success' ? colors.green : colors.red, fontWeight: 600, fontSize: `${12 * fontSizeMultiplier}px` }}>
           <span>{toast.message}</span>
         </div>
       )}
 
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 24px', background: uiColors.tealDark, borderBottom: '0.5px solid #2B4A4E', position: 'sticky', top: 0, zIndex: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#9FE1CB', cursor: 'pointer', fontWeight: 500 }}>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 28px', background: colors.tealDark, borderBottom: `1px solid ${colors.tealPrimary}4D`, position: 'sticky', top: 0, zIndex: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.bgLight, cursor: 'pointer', fontWeight: 500, opacity: 0.8 }}>
             Dashboard
           </div>
-          <div style={{ width: '0.5px', height: '14px', background: '#2B4A4E' }}></div>
-          <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1rem', fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Personal Ledger</span>
+          <div style={{ width: '1px', height: '14px', background: `${colors.white}33` }}></div>
+          <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Personal Ledger</span>
           
-          <div style={{ display: 'flex', gap: '2px', marginLeft: '4px' }}>
-            <button onClick={() => setActiveTab('all')} style={{ padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'all' ? '#2B4A4E' : 'transparent', color: activeTab === 'all' ? '#fff' : '#9FE1CB' }}>All</button>
-            <button onClick={() => setActiveTab('expense')} style={{ padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'expense' ? '#2B4A4E' : 'transparent', color: activeTab === 'expense' ? '#fff' : '#9FE1CB' }}>Expenses</button>
-            <button onClick={() => setActiveTab('income')} style={{ padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'income' ? '#2B4A4E' : 'transparent', color: activeTab === 'income' ? '#fff' : '#9FE1CB' }}>Income</button>
+          <div style={{ display: 'flex', gap: '4px', marginLeft: '12px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '24px' }}>
+            <button onClick={() => setActiveTab('all')} style={{ padding: '6px 16px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'all' ? colors.tealPrimary : 'transparent', color: activeTab === 'all' ? '#fff' : 'rgba(255,255,255,0.7)', transition: 'all 0.2s' }}>All</button>
+            <button onClick={() => setActiveTab('expense')} style={{ padding: '6px 16px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'expense' ? colors.tealPrimary : 'transparent', color: activeTab === 'expense' ? '#fff' : 'rgba(255,255,255,0.7)', transition: 'all 0.2s' }}>Expenses</button>
+            <button onClick={() => setActiveTab('income')} style={{ padding: '6px 16px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'income' ? colors.tealPrimary : 'transparent', color: activeTab === 'income' ? '#fff' : 'rgba(255,255,255,0.7)', transition: 'all 0.2s' }}>Income</button>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button onClick={() => setIsExportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'transparent', color: '#9FE1CB', border: '0.5px solid #2B4A4E', padding: '7px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Export</button>
-          <button onClick={() => setIsDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: uiColors.accentGreen, color: '#fff', border: 'none', padding: '7px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add transaction</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={() => setIsExportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'transparent', color: colors.white, border: `1px solid rgba(255,255,255,0.2)`, padding: '8px 18px', borderRadius: '20px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Export</button>
+          <button onClick={() => setIsDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: colors.tealPrimary, color: '#fff', border: 'none', padding: '9px 20px', borderRadius: '20px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transition: 'all 0.2s' }}>Add transaction</button>
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isPanelOpen ? '1fr 340px' : '1fr 0px', transition: 'grid-template-columns 0.3s ease', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isPanelOpen ? '1fr 380px' : '1fr 0px', transition: 'grid-template-columns 0.4s cubic-bezier(0.16, 1, 0.3, 1)', flex: 1, overflow: 'hidden' }}>
         
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, background: colors.background }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', background: '#fff', borderBottom: `0.5px solid ${uiColors.border}` }}>
-            <div style={{ padding: '14px 20px', borderRight: `0.5px solid ${uiColors.border}` }}>
-              <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Total income</div>
-              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.4rem', fontWeight: 600, color: '#3B6D11' }}>₹{totalIncome.toLocaleString('en-IN')}</div>
-              <div style={{ fontSize: '11px', color: '#9BB5B8', marginTop: '3px' }}>Current Month Cycle</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', background: colors.cardBg, borderBottom: `1px solid ${colors.border}` }}>
+            <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Total income</div>
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.green }}>₹{totalIncome.toLocaleString('en-IN')}</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>Current Month Cycle</div>
             </div>
 
-            <div style={{ padding: '14px 20px', borderRight: `0.5px solid ${uiColors.border}` }}>
-              <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Total expenses</div>
-              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.4rem', fontWeight: 600, color: '#A32D2D' }}>₹{totalExpenses.toLocaleString('en-IN')}</div>
-              <div style={{ fontSize: '11px', color: '#9BB5B8', marginTop: '3px' }}>{expensesData.filter(t => t.type === 'expense').length} active lines</div>
+            <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Total expenses</div>
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.red }}>₹{totalExpenses.toLocaleString('en-IN')}</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>{expensesData.filter(t => t.type === 'expense').length} active lines</div>
             </div>
 
-            <div style={{ padding: '14px 20px', borderRight: `0.5px solid ${uiColors.border}` }}>
-              <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Net savings</div>
-              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.4rem', fontWeight: 600, color: uiColors.tealDark }}>₹{netSavings.toLocaleString('en-IN')}</div>
-              <div style={{ fontSize: '11px', color: '#0F6E56', fontWeight: 600, marginTop: '3px' }}>Balanced Liquidity</div>
+            <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Net savings</div>
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.tealDark }}>₹{netSavings.toLocaleString('en-IN')}</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.green, fontWeight: 600, marginTop: '4px' }}>Balanced Liquidity</div>
             </div>
 
-            <div style={{ padding: '14px 20px' }}>
-              <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Largest spend</div>
-              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.1rem', fontWeight: 600, color: uiColors.tealDark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{largestSpendItem ? largestSpendItem.description : 'None'}</div>
-              <div style={{ fontSize: '11px', color: '#9BB5B8', marginTop: '3px' }}>{largestSpendItem ? `₹${largestSpendItem.amount.toLocaleString('en-IN')} · ${largestSpendItem.category}` : 'No records yet'}</div>
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Largest spend</div>
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.3 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.tealDark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{largestSpendItem ? largestSpendItem.description : 'None'}</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>{largestSpendItem ? `₹${largestSpendItem.amount.toLocaleString('en-IN')} · ${largestSpendItem.category}` : 'No records yet'}</div>
             </div>
           </div>
 
-          <div style={{ background: '#fff', borderBottom: `0.5px solid ${uiColors.border}`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', position: 'sticky', top: '48px', zIndex: 15 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', background: '#F2F4F3', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', color: '#9BB5B8', flex: 1, maxWidth: '240px' }}>
-              <input type="text" placeholder="Search keywords..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: '#1E3336', fontFamily: 'inherit', width: '100%' }} />
+          <div style={{ background: colors.cardBg, borderBottom: `1px solid ${colors.border}`, padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', position: 'sticky', top: '0', zIndex: 15, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: colors.bgLight, borderRadius: '10px', padding: '8px 14px', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, flex: 1, maxWidth: '280px', border: `1px solid ${colors.border}` }}>
+              <input type="text" placeholder="Search keywords..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textDark, fontFamily: 'inherit', width: '100%' }} />
             </div>
 
-            <div style={{ width: '0.5px', height: '20px', background: '#E0E8E8' }}></div>
+            <div style={{ width: '1px', height: '24px', background: colors.border, margin: '0 4px' }}></div>
 
-            <select value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '11px', border: `1px solid ${uiColors.border}`, background: selectedCategoryFilter ? uiColors.chipActiveBg : '#fff', color: selectedCategoryFilter ? uiColors.chipActiveText : uiColors.tealPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <select value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, border: `1px solid ${selectedCategoryFilter ? colors.tealPrimary : colors.border}`, background: selectedCategoryFilter ? `${colors.tealPrimary}1A` : colors.white, color: selectedCategoryFilter ? colors.tealDark : colors.textPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
               <option value="">Category (All)</option>
               {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
             </select>
 
-            <select value={selectedWalletFilter} onChange={(e) => setSelectedWalletFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '11px', border: `1px solid ${uiColors.border}`, background: selectedWalletFilter ? uiColors.chipActiveBg : '#fff', color: selectedWalletFilter ? uiColors.chipActiveText : uiColors.tealPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <select value={selectedWalletFilter} onChange={(e) => setSelectedWalletFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, border: `1px solid ${selectedWalletFilter ? colors.tealPrimary : colors.border}`, background: selectedWalletFilter ? `${colors.tealPrimary}1A` : colors.white, color: selectedWalletFilter ? colors.tealDark : colors.textPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
               <option value="">Wallet (All)</option>
               {paymentModes.map(mode => <option key={mode} value={mode}>{mode}</option>)}
             </select>
 
-            <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#9BB5B8', whiteSpace: 'nowrap' }}>
+            <div style={{ marginLeft: 'auto', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, whiteSpace: 'nowrap', fontWeight: 500 }}>
               {filteredTransactions.length} results evaluated
             </div>
           </div>
 
-          <div style={{ flex: 1, overflow: 'auto', background: '#fff' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#F7F9F9', borderBottom: `0.5px solid ${uiColors.border}`, position: 'sticky', top: 0, zIndex: 10 }}>
-                  <th style={{ padding: '10px 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', textAlign: 'left' }}>Category</th>
-                  <th style={{ padding: '10px 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', textAlign: 'left' }}>Description</th>
-                  <th style={{ padding: '10px 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', textAlign: 'left' }}>Date</th>
-                  <th style={{ padding: '10px 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', textAlign: 'left' }}>Wallet Channel</th>
-                  <th style={{ padding: '10px 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', textAlign: 'left' }}>Tags</th>
-                  <th style={{ padding: '10px 16px', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', textAlign: 'right' }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" style={{ padding: '40px', textAlign: 'center', fontSize: '12px', color: '#9BB5B8' }}>No ledger transaction lines matched current viewport scopes.</td>
+          <div style={{ flex: 1, overflow: 'auto', background: colors.background, padding: '20px 24px' }}>
+            <div style={{ background: colors.cardBg, borderRadius: '16px', border: `1px solid ${colors.border}`, overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: colors.bgLight, borderBottom: `1px solid ${colors.border}` }}>
+                    <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Category</th>
+                    <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Description</th>
+                    <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Date</th>
+                    <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Wallet Channel</th>
+                    <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Tags</th>
+                    <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'right' }}>Amount</th>
                   </tr>
-                ) : filteredTransactions.map((txn) => {
-                  const isExpense = txn.type === 'expense';
-                  const matchIcon = categories.find(c => c.name === txn.category) || categories[7];
-
-                  return (
-                    <tr key={txn._id} onClick={() => { setSelectedTxn(txn); setIsPanelOpen(true); }} style={{ borderBottom: '0.5px solid #F2F4F3', cursor: 'pointer', background: selectedTxn?._id === txn._id ? '#F0FAF6' : 'transparent', transition: 'background 0.1s' }}>
-                      <td style={{ padding: '11px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', background: matchIcon.bg, color: matchIcon.color, fontWeight: 700 }}>
-                            {txn.category?.substring(0, 2).toUpperCase()}
-                          </div>
-                          <div style={{ fontSize: '12px', fontWeight: 500, color: uiColors.tealDark }}>{txn.category}</div>
-                        </div>
-                      </td>
-
-                      <td style={{ padding: '11px 16px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 500, color: uiColors.tealDark }}>{txn.description}</div>
-                        {txn.isSharedExpense && <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: '#E1F5EE', color: '#0F6E56', fontSize: '9px', fontWeight: 600, marginTop: '2px' }}>SHARED EXPENSE</span>}
-                      </td>
-
-                      <td style={{ padding: '11px 16px', fontSize: '11px', color: '#9BB5B8' }}>
-                        {new Date(txn.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                      </td>
-
-                      <td style={{ padding: '11px 16px' }}>
-                        <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 500, background: '#E6F1FB', color: '#185FA5' }}>{txn.paymentMode}</span>
-                      </td>
-
-                      <td style={{ padding: '11px 16px' }}>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                          {txn.tags?.map(t => <span key={t} style={{ display: 'inline-flex', padding: '2px 7px', borderRadius: '5px', background: '#F2F4F3', color: '#6B8B8E', fontSize: '10px', fontWeight: 600 }}>#{t}</span>)}
-                        </div>
-                      </td>
-
-                      <td style={{ padding: '11px 16px', textAlign: 'right', fontFamily: "'Oswald', sans-serif", fontSize: '1.05rem', fontWeight: 600, color: isExpense ? uiColors.redText : uiColors.greenText }}>
-                        {isExpense ? '-' : '+'}₹{txn.amount.toLocaleString('en-IN')}
-                      </td>
+                </thead>
+                <tbody>
+                  {filteredTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ padding: '60px', textAlign: 'center', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textMuted }}>No ledger transaction lines matched current viewport scopes.</td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : filteredTransactions.map((txn) => {
+                    const isExpense = txn.type === 'expense';
+                    const matchIcon = categories.find(c => c.name === txn.category) || categories[7];
+
+                    return (
+                      <tr key={txn._id} onClick={() => { setSelectedTxn(txn); setIsPanelOpen(true); }} style={{ borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', background: selectedTxn?._id === txn._id ? `${colors.tealPrimary}0D` : 'transparent', transition: 'background 0.15s ease' }}>
+                        <td style={{ padding: '16px 20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${12 * fontSizeMultiplier}px`, background: matchIcon.bg, color: matchIcon.color, fontWeight: 700 }}>
+                              {txn.category?.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>{txn.category}</div>
+                          </div>
+                        </td>
+
+                        <td style={{ padding: '16px 20px' }}>
+                          <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 500, color: colors.textDark }}>{txn.description}</div>
+                          {txn.isSharedExpense && <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '4px', background: `${colors.tealPrimary}1A`, color: colors.tealPrimary, fontSize: `${10 * fontSizeMultiplier}px`, fontWeight: 700, marginTop: '4px' }}>SHARED EXPENSE</span>}
+                        </td>
+
+                        <td style={{ padding: '16px 20px', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textPrimary, fontWeight: 500 }}>
+                          {new Date(txn.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </td>
+
+                        <td style={{ padding: '16px 20px' }}>
+                          <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '6px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, background: colors.bgLight, color: colors.textDark, border: `1px solid ${colors.border}` }}>{txn.paymentMode}</span>
+                        </td>
+
+                        <td style={{ padding: '16px 20px' }}>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {txn.tags?.map(t => <span key={t} style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '6px', background: colors.bgLight, color: colors.textPrimary, fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, border: `1px solid ${colors.border}` }}>#{t}</span>)}
+                          </div>
+                        </td>
+
+                        <td style={{ padding: '16px 20px', textAlign: 'right', fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 600, color: isExpense ? colors.red : colors.green }}>
+                          {isExpense ? '-' : '+'}₹{txn.amount.toLocaleString('en-IN')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
 
         </div>
 
-        <div style={{ background: '#fff', borderLeft: `0.5px solid ${uiColors.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: colors.cardBg, borderLeft: `1px solid ${colors.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '-5px 0 20px rgba(0,0,0,0.02)' }}>
           {isPanelOpen && selectedTxn ? (
             <>
-              <div style={{ background: uiColors.tealDark, padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: '0.95rem', fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Line Inspector</span>
-                <span onClick={() => setIsPanelOpen(false)} style={{ cursor: 'pointer', color: '#9FE1CB', fontSize: '14px', fontWeight: 'bold' }}>✕</span>
+              <div style={{ background: colors.tealDark, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Line Inspector</span>
+                <span onClick={() => setIsPanelOpen(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold', transition: 'color 0.2s' }} onMouseOver={e=>e.target.style.color='#fff'} onMouseOut={e=>e.target.style.color='rgba(255,255,255,0.6)'}>✕</span>
               </div>
               
-              <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: 1 }}>
-                <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '6px' }}>
+              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
+                <div style={{ textAlign: 'center', padding: '20px 0', background: selectedTxn.type === 'expense' ? `${colors.red}0D` : `${colors.green}0D`, borderRadius: '16px', border: `1px solid ${selectedTxn.type === 'expense' ? `${colors.red}33` : `${colors.green}33`}` }}>
+                  <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: selectedTxn.type === 'expense' ? colors.red : colors.green, opacity: 0.8, marginBottom: '8px' }}>
                     {selectedTxn.type === 'expense' ? 'TOTAL DISBURSEMENT' : 'TOTAL REVENUE'}
                   </div>
-                  <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '2.2rem', fontWeight: 600, color: selectedTxn.type === 'expense' ? uiColors.redText : uiColors.greenText }}>
+                  <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${2.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: selectedTxn.type === 'expense' ? colors.red : colors.green, lineHeight: 1 }}>
                     {selectedTxn.type === 'expense' ? '-' : '+'}₹{selectedTxn.amount.toLocaleString('en-IN')}
                   </div>
                 </div>
 
-                <div>
-                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '8px' }}>Metadata properties</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid #F2F4F3', fontSize: '12px' }}>
-                    <span style={{ color: '#9BB5B8' }}>Description</span>
-                    <span style={{ fontWeight: 500, color: uiColors.tealDark }}>{selectedTxn.description}</span>
+                <div style={{ background: colors.white, borderRadius: '16px', padding: '20px', border: `1px solid ${colors.border}` }}>
+                  <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '12px' }}>Metadata properties</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${colors.border}`, fontSize: `${13 * fontSizeMultiplier}px` }}>
+                    <span style={{ color: colors.textMuted, fontWeight: 500 }}>Description</span>
+                    <span style={{ fontWeight: 600, color: colors.textDark }}>{selectedTxn.description}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid #F2F4F3', fontSize: '12px' }}>
-                    <span style={{ color: '#9BB5B8' }}>Category Node</span>
-                    <span style={{ fontWeight: 500, color: uiColors.tealDark }}>{selectedTxn.category}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${colors.border}`, fontSize: `${13 * fontSizeMultiplier}px` }}>
+                    <span style={{ color: colors.textMuted, fontWeight: 500 }}>Category Node</span>
+                    <span style={{ fontWeight: 600, color: colors.textDark }}>{selectedTxn.category}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid #F2F4F3', fontSize: '12px' }}>
-                    <span style={{ color: '#9BB5B8' }}>Wallet Channel</span>
-                    <span style={{ fontWeight: 500, color: uiColors.tealDark }}>{selectedTxn.paymentMode}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${colors.border}`, fontSize: `${13 * fontSizeMultiplier}px` }}>
+                    <span style={{ color: colors.textMuted, fontWeight: 500 }}>Wallet Channel</span>
+                    <span style={{ fontWeight: 600, color: colors.textDark }}>{selectedTxn.paymentMode}</span>
                   </div>
                   {selectedTxn.notes && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 0', fontSize: '12px' }}>
-                      <span style={{ color: '#9BB5B8' }}>Internal Notes Summary</span>
-                      <span style={{ padding: '8px', background: uiColors.bgMain, borderRadius: '6px', color: uiColors.tealPrimary, lineHeight: '1.4' }}>{selectedTxn.notes}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 0', fontSize: `${13 * fontSizeMultiplier}px` }}>
+                      <span style={{ color: colors.textMuted, fontWeight: 500 }}>Internal Notes Summary</span>
+                      <span style={{ padding: '12px', background: colors.bgLight, borderRadius: '10px', color: colors.textDark, lineHeight: '1.5', border: `1px solid ${colors.border}` }}>{selectedTxn.notes}</span>
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-                  <button onClick={() => handleDeleteStub(selectedTxn._id)} style={{ flex: 1, padding: '11px', background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5BFBF', borderRadius: '9px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase' }}>
+                <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
+                  <button onClick={() => handleDeleteStub(selectedTxn._id)} style={{ width: '100%', padding: '14px', background: `${colors.red}1A`, color: colors.red, border: `1px solid ${colors.red}4D`, borderRadius: '12px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '1px', transition: 'all 0.2s' }} onMouseOver={e=>e.target.style.background=`${colors.red}33`} onMouseOut={e=>e.target.style.background=`${colors.red}1A`}>
                     Wipe Record Entry
                   </button>
                 </div>
               </div>
             </>
           ) : (
-            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9BB5B8', fontSize: '12px' }}>
+            <div style={{ padding: '60px 30px', textAlign: 'center', color: colors.textMuted, fontSize: `${13 * fontSizeMultiplier}px`, lineHeight: 1.6 }}>
               Highlight any row from the left matrix layout sheet to activate granular property mapping.
             </div>
           )}
@@ -375,61 +365,61 @@ const ExpenseManager = () => {
 
       {isDrawerOpen && (
         <>
-          <div onClick={() => setIsDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(30,51,54,0.4)', zIndex: 40 }} />
-          <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: '400px', background: '#fff', zIndex: 50, display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)' }}>
-            <div style={{ background: uiColors.tealDark, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1rem', fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Log operational ledger row</span>
-              <span onClick={() => setIsDrawerOpen(false)} style={{ cursor: 'pointer', color: '#9FE1CB', fontSize: '16px', fontWeight: 'bold' }}>✕</span>
+          <div onClick={() => setIsDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 40 }} />
+          <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: '440px', background: colors.cardBg, zIndex: 50, display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 40px rgba(0,0,0,0.15)' }}>
+            <div style={{ background: colors.tealDark, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Log operational ledger row</span>
+              <span onClick={() => setIsDrawerOpen(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold' }}>✕</span>
             </div>
 
-            <form onSubmit={handleSaveTransaction} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: `0.5px solid ${uiColors.border}`, borderRadius: '10px', overflow: 'hidden' }}>
-                <div onClick={() => setTxnType('expense')} style={{ padding: '9px', textAlign: 'center', fontSize: '12px', fontWeight: 600, cursor: 'pointer', background: txnType === 'expense' ? '#FCEBEB' : '#fff', color: txnType === 'expense' ? '#791F1F' : '#9BB5B8' }}>Expense</div>
-                <div onClick={() => setTxnType('income')} style={{ padding: '9px', textAlign: 'center', fontSize: '12px', fontWeight: 600, cursor: 'pointer', background: txnType === 'income' ? '#EAF3DE' : '#fff', color: txnType === 'income' ? '#27500A' : '#9BB5B8' }}>Income</div>
+            <form onSubmit={handleSaveTransaction} style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: `1px solid ${colors.border}`, borderRadius: '12px', overflow: 'hidden', background: colors.bgLight, padding: '4px' }}>
+                <div onClick={() => setTxnType('expense')} style={{ padding: '10px', textAlign: 'center', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', background: txnType === 'expense' ? colors.white : 'transparent', color: txnType === 'expense' ? colors.red : colors.textMuted, borderRadius: '8px', boxShadow: txnType === 'expense' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>Expense</div>
+                <div onClick={() => setTxnType('income')} style={{ padding: '10px', textAlign: 'center', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', background: txnType === 'income' ? colors.white : 'transparent', color: txnType === 'income' ? colors.green : colors.textMuted, borderRadius: '8px', boxShadow: txnType === 'income' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>Income</div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Transaction value</label>
-                <input type="number" placeholder="₹0" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ width: '100%', padding: '12px 14px', border: `0.5px solid ${uiColors.border}`, borderRadius: '10px', fontSize: '1.6rem', color: uiColors.tealDark, outline: 'none', fontFamily: "'Oswald', sans-serif", fontWeight: 600, background: '#FAFCFC', boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Transaction value</label>
+                <input type="number" placeholder="₹0" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ width: '100%', padding: '16px 20px', border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${1.8 * fontSizeMultiplier}rem`, color: colors.tealDark, outline: 'none', fontFamily: "'Oswald', sans-serif", fontWeight: 600, background: colors.white, boxSizing: 'border-box', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.02)' }} />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Primary Description</label>
-                <input type="text" placeholder="e.g. Swiggy dinner, host fee" value={description} onChange={(e) => handleDescChange(e.target.value)} required style={{ width: '100%', padding: '10px 12px', border: `0.5px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: '#FAFCFC', boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Primary Description</label>
+                <input type="text" placeholder="e.g. Swiggy dinner, host fee" value={description} onChange={(e) => handleDescChange(e.target.value)} required style={{ width: '100%', padding: '12px 16px', border: `1px solid ${colors.border}`, borderRadius: '10px', fontSize: `${14 * fontSizeMultiplier}px`, color: colors.textDark, outline: 'none', background: colors.white, boxSizing: 'border-box' }} />
                 {autoCatSuggestion && (
-                  <div style={{ marginTop: '5px', fontSize: '11px', color: '#0F6E56', fontWeight: 600 }}>
+                  <div style={{ marginTop: '8px', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.green, fontWeight: 600, padding: '8px 12px', background: `${colors.green}1A`, borderRadius: '6px' }}>
                     Auto-categorization mapped match: <strong>{autoCatSuggestion}</strong>
                   </div>
                 )}
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Category configuration</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Category configuration</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                   {categories.map(c => (
-                    <div key={c.name} onClick={() => setCategory(c.name)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '8px 4px', borderRadius: '9px', border: `0.5px solid ${category === c.name ? '#9FE1CB' : uiColors.border}`, background: category === c.name ? '#E1F5EE' : '#FAFCFC', cursor: 'pointer', boxSizing: 'border-box' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 600, color: uiColors.tealPrimary }}>{c.name}</span>
+                    <div key={c.name} onClick={() => setCategory(c.name)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 4px', borderRadius: '10px', border: `1px solid ${category === c.name ? colors.tealPrimary : colors.border}`, background: category === c.name ? `${colors.tealPrimary}1A` : colors.white, cursor: 'pointer', boxSizing: 'border-box', transition: 'all 0.2s' }}>
+                      <span style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, color: category === c.name ? colors.tealDark : colors.textPrimary }}>{c.name}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Target Date</label>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: `0.5px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: '#FAFCFC', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Target Date</label>
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: '100%', padding: '12px 16px', border: `1px solid ${colors.border}`, borderRadius: '10px', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textDark, outline: 'none', background: colors.white, boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Notes</label>
-                  <input type="text" placeholder="Internal memo" value={notes} onChange={(e) => setNotes(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: `0.5px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: '#FAFCFC', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Notes</label>
+                  <input type="text" placeholder="Internal memo" value={notes} onChange={(e) => setNotes(e.target.value)} style={{ width: '100%', padding: '12px 16px', border: `1px solid ${colors.border}`, borderRadius: '10px', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textDark, outline: 'none', background: colors.white, boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Wallet channel allocation</label>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Wallet channel allocation</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {paymentModes.map(mode => (
-                    <div key={mode} onClick={() => setPaymentMode(mode)} style={{ padding: '6px 12px', borderRadius: '8px', border: `1px solid ${paymentMode === mode ? '#9FE1CB' : uiColors.border}`, background: paymentMode === mode ? '#E1F5EE' : '#FAFCFC', color: paymentMode === mode ? '#085041' : uiColors.tealPrimary, fontSize: '11px', fontWeight: 500, cursor: 'pointer' }}>
+                    <div key={mode} onClick={() => setPaymentMode(mode)} style={{ padding: '8px 14px', borderRadius: '8px', border: `1px solid ${paymentMode === mode ? colors.tealPrimary : colors.border}`, background: paymentMode === mode ? `${colors.tealPrimary}1A` : colors.white, color: paymentMode === mode ? colors.tealDark : colors.textPrimary, fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
                       {mode}
                     </div>
                   ))}
@@ -437,12 +427,12 @@ const ExpenseManager = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#9BB5B8', marginBottom: '5px' }}>Index context tags</label>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Index context tags</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {preDefinedTags.map(tag => {
                     const isIncluded = tags.includes(tag);
                     return (
-                      <div key={tag} onClick={() => handleToggleTag(tag)} style={{ padding: '4px 10px', borderRadius: '6px', border: `1px solid ${isIncluded ? '#9FE1CB' : uiColors.border}`, background: isIncluded ? '#E1F5EE' : '#FAFCFC', color: isIncluded ? '#085041' : '#6B8B8E', fontSize: '11px', cursor: 'pointer' }}>
+                      <div key={tag} onClick={() => handleToggleTag(tag)} style={{ padding: '6px 12px', borderRadius: '8px', border: `1px solid ${isIncluded ? colors.tealPrimary : colors.border}`, background: isIncluded ? `${colors.tealPrimary}1A` : colors.bgLight, color: isIncluded ? colors.tealDark : colors.textPrimary, fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>
                         #{tag}
                       </div>
                     );
@@ -450,14 +440,14 @@ const ExpenseManager = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyB: 'space-between', justifyContent: 'space-between', padding: '10px 12px', background: '#F2F4F3', borderRadius: '8px', marginTop: '6px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 500, color: uiColors.tealPrimary }}>Mark as shared roommate split entry</span>
-                <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} style={{ accentColor: uiColors.tealPrimary, cursor: 'pointer' }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: colors.bgLight, borderRadius: '10px', marginTop: '4px', border: `1px solid ${colors.border}` }}>
+                <span style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.tealPrimary }}>Mark as shared roommate split entry</span>
+                <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} style={{ accentColor: colors.tealPrimary, cursor: 'pointer', width: '18px', height: '18px' }} />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px', paddingBottom: '20px' }}>
-                <button type="button" onClick={() => setIsDrawerOpen(false)} style={{ padding: '11px 18px', background: '#F2F4F3', color: '#6B8B8E', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, padding: '11px', background: uiColors.tealPrimary, color: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Save transaction</button>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px', paddingBottom: '24px' }}>
+                <button type="button" onClick={() => setIsDrawerOpen(false)} style={{ padding: '14px 20px', background: colors.bgLight, color: colors.textPrimary, border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Cancel</button>
+                <button type="submit" style={{ flex: 1, padding: '14px', background: colors.tealPrimary, color: '#fff', border: 'none', borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition: 'all 0.2s' }}>Save transaction</button>
               </div>
             </form>
           </div>
@@ -465,20 +455,20 @@ const ExpenseManager = () => {
       )}
 
       {isExportModalOpen && (
-        <div onClick={() => setIsExportModalOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(30,51,54,0.45)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', width: '360px', overflow: 'hidden', boxShadow: '0 12px 36px rgba(0,0,0,0.15)' }}>
-            <div style={{ background: uiColors.tealDark, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: '0.95rem', fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Export workbook</span>
-              <span onClick={() => setIsExportModalOpen(false)} style={{ cursor: 'pointer', color: '#9FE1CB', fontSize: '14px', fontWeight: 'bold' }}>✕</span>
+        <div onClick={() => setIsExportModalOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: colors.cardBg, borderRadius: '20px', width: '400px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
+            <div style={{ background: colors.tealDark, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Export workbook</span>
+              <span onClick={() => setIsExportModalOpen(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold' }}>✕</span>
             </div>
-            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#9BB5B8', marginBottom: '4px' }}>Compile current ledger cycle file blocks</div>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, marginBottom: '8px', fontWeight: 500 }}>Compile current ledger cycle file blocks</div>
               
-              <div onClick={() => { showNotification('CSV sheets generated successfully.', 'success'); setIsExportModalOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: `0.5px solid ${uiColors.border}`, borderRadius: '10px', cursor: 'pointer', background: '#FAFCFC' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: uiColors.tealDark }}>Comma Separated Spreadsheet (.csv)</div>
+              <div onClick={() => { showNotification('CSV sheets generated successfully.', 'success'); setIsExportModalOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${colors.border}`, borderRadius: '12px', cursor: 'pointer', background: colors.bgLight, transition: 'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.borderColor=colors.tealPrimary} onMouseOut={e=>e.currentTarget.style.borderColor=colors.border}>
+                <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>Comma Separated Spreadsheet (.csv)</div>
               </div>
-              <div onClick={() => { showNotification('Excel report workbook compiled.', 'success'); setIsExportModalOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: `0.5px solid ${uiColors.border}`, borderRadius: '10px', cursor: 'pointer', background: '#FAFCFC' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: uiColors.tealDark }}>Microsoft Excel Workbook (.xlsx)</div>
+              <div onClick={() => { showNotification('Excel report workbook compiled.', 'success'); setIsExportModalOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${colors.border}`, borderRadius: '12px', cursor: 'pointer', background: colors.bgLight, transition: 'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.borderColor=colors.tealPrimary} onMouseOut={e=>e.currentTarget.style.borderColor=colors.border}>
+                <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>Microsoft Excel Workbook (.xlsx)</div>
               </div>
             </div>
           </div>

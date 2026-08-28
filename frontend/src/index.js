@@ -5,14 +5,17 @@ import { BrowserRouter } from 'react-router-dom';
 import { store } from './app/store';
 import App from './App';
 import './App.css';
+import { ThemeProvider } from './context/ThemeContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <Provider store={store}>
-      <BrowserRouter> 
-        <App />
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter> 
+          <App />
+        </BrowserRouter>
+      </ThemeProvider>
     </Provider>
   </React.StrictMode>
 );

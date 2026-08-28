@@ -31,7 +31,6 @@ exports.generateIntelligenceMetrics = async (req, res) => {
     let structuredRecommendations = [];
 
     try {
-      // Attempt to hit the live generative AI model instance
       const textModel = aiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const dynamicAiPrompt = `
         You are an expert AI financial advisor. Analyze these raw numeric metrics processed from a user's transaction ledger:
@@ -53,7 +52,6 @@ exports.generateIntelligenceMetrics = async (req, res) => {
         .filter(Boolean);
 
     } catch (aiError) {
-      // FALLBACK CORES: Traps 503 / 429 overloads gracefully and maps hard raw statistics vectors
       console.warn('Gemini Pipeline down (503/Quota Spike). Falling back to rule-based analysis:', aiError.message);
       
       structuredRecommendations = [
@@ -67,7 +65,6 @@ exports.generateIntelligenceMetrics = async (req, res) => {
       ];
     }
 
-    // Always respond with valid JSON structure so the frontend continues rendering safely
     res.status(200).json({
       healthScore: calculatedMetrics.healthScore,
       anomalies: calculatedMetrics.anomalies,

@@ -6,6 +6,7 @@ import {
   useAddContributionMutation,
   useDeleteGoalMutation
 } from '../../features/goals/goalApi';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const SavingsGoals = () => {
   // LIVE CORE QUERIES & MUTATIONS HOOKS
@@ -94,7 +95,7 @@ const handleCreateGoal = async (e) => {
       setGoalName(''); setTargetAmount(''); setMonthlySavings(''); setNotes('');
     } catch (err) {
       // Shorthand error logger that intercepts actual raw Mongo validation failures
-      triggerToast(err?.data?.message || 'Failed to save new objective vector.');
+      triggerToast(getErrorMessage(err, 'Failed to save new objective vector.'));
     }
   };
   const handleAddContribution = async (e) => {
@@ -119,7 +120,7 @@ const handleCreateGoal = async (e) => {
       // Keep selected document structure current with mutation results
       setSelectedGoal(res);
     } catch (err) {
-      triggerToast(err?.data?.message || 'Transaction allocation refused by balance constraints.');
+      triggerToast(getErrorMessage(err, 'Transaction allocation refused by balance constraints.'));
     }
   };
 
