@@ -5,10 +5,10 @@ import { getErrorMessage } from '../../utils/errorHandler';
 import { useTheme } from '../../context/ThemeContext';
 
 const ProfileSettings = ({ onBackToDashboard }) => {
-  // CLEANED UP ACCESS LOCK VECTOR STREAMS
+  
   const currentUser = useSelector((state) => state.auth.user);
 
-  // DYNAMIC BACKEND STATE INTEGRATION HOOKS
+  
   const { data: dbCategories = [], isLoading: catsLoading } = useGetCategoriesQuery();
   const [updateCategoryBudget] = useUpdateCategoryBudgetMutation();
   const { theme, setTheme, fontSize, setFontSize } = useTheme();

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
 import {
   useGetTransactionsQuery,
   useAddTransactionMutation,
@@ -9,8 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { getErrorMessage } from '../../utils/errorHandler';
 
 const ExpenseManager = () => {
-  const currentUser = useSelector((state) => state.auth.user);
-  
+
   const { data: expensesData = [], refetch } = useGetTransactionsQuery();
   const [addTransaction] = useAddTransactionMutation(); 
   const [deleteTransaction] = useDeleteTransactionMutation();
@@ -30,7 +28,7 @@ const ExpenseManager = () => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Shopping');
-  const [date, setDate] = useState('2026-06-10');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [paymentMode, setPaymentMode] = useState('GPay');
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState([]);
@@ -161,7 +159,7 @@ const ExpenseManager = () => {
   });
 
   return (
-    <div style={{ background: colors.background, minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Montserrat', sans-serif" }}>
+    <div style={{ background: '#ffffff', minHeight: '100%', display: 'flex', flexDirection: 'column', fontFamily: "'Montserrat', sans-serif" }}>
       
       {toast.show && (
         <div style={{ position: 'fixed', top: '84px', right: '24px', background: toast.type === 'success' ? `${colors.green}1A` : `${colors.red}1A`, borderLeft: `4px solid ${toast.type === 'success' ? colors.green : colors.red}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 10000, color: toast.type === 'success' ? colors.green : colors.red, fontWeight: 600, fontSize: `${12 * fontSizeMultiplier}px` }}>
@@ -169,30 +167,25 @@ const ExpenseManager = () => {
         </div>
       )}
 
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 28px', background: colors.tealDark, borderBottom: `1px solid ${colors.tealPrimary}4D`, position: 'sticky', top: 0, zIndex: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.bgLight, cursor: 'pointer', fontWeight: 500, opacity: 0.8 }}>
-            Dashboard
-          </div>
-          <div style={{ width: '1px', height: '14px', background: `${colors.white}33` }}></div>
-          <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Personal Ledger</span>
-          
-          <div style={{ display: 'flex', gap: '4px', marginLeft: '12px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '24px' }}>
-            <button onClick={() => setActiveTab('all')} style={{ padding: '6px 16px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'all' ? colors.tealPrimary : 'transparent', color: activeTab === 'all' ? '#fff' : 'rgba(255,255,255,0.7)', transition: 'all 0.2s' }}>All</button>
-            <button onClick={() => setActiveTab('expense')} style={{ padding: '6px 16px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'expense' ? colors.tealPrimary : 'transparent', color: activeTab === 'expense' ? '#fff' : 'rgba(255,255,255,0.7)', transition: 'all 0.2s' }}>Expenses</button>
-            <button onClick={() => setActiveTab('income')} style={{ padding: '6px 16px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === 'income' ? colors.tealPrimary : 'transparent', color: activeTab === 'income' ? '#fff' : 'rgba(255,255,255,0.7)', transition: 'all 0.2s' }}>Income</button>
-          </div>
+      {}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 28px', borderBottom: `1px solid ${colors.border}`, backgroundColor: '#ffffff', position: 'sticky', top: '60px', zIndex: 20, gap: '12px', flexWrap: 'wrap' }}>
+        {}
+        <div style={{ display: 'flex', gap: '4px', background: colors.bgLight, padding: '3px', borderRadius: '10px', border: `1px solid ${colors.border}` }}>
+          <button onClick={() => setActiveTab('all')} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'all' ? '#ffffff' : 'transparent', color: activeTab === 'all' ? colors.tealDark : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'all' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>All</button>
+          <button onClick={() => setActiveTab('expense')} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'expense' ? '#ffffff' : 'transparent', color: activeTab === 'expense' ? colors.red : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'expense' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>Expenses</button>
+          <button onClick={() => setActiveTab('income')} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'income' ? '#ffffff' : 'transparent', color: activeTab === 'income' ? colors.green : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'income' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>Income</button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={() => setIsExportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'transparent', color: colors.white, border: `1px solid rgba(255,255,255,0.2)`, padding: '8px 18px', borderRadius: '20px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Export</button>
-          <button onClick={() => setIsDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: colors.tealPrimary, color: '#fff', border: 'none', padding: '9px 20px', borderRadius: '20px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transition: 'all 0.2s' }}>Add transaction</button>
+        {}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button onClick={() => setIsExportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'transparent', color: colors.textPrimary, border: `1px solid ${colors.border}`, padding: '7px 16px', borderRadius: '8px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Export</button>
+          <button onClick={() => setIsDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1E3336', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>+ Add transaction</button>
         </div>
-      </header>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isPanelOpen ? '1fr 380px' : '1fr 0px', transition: 'grid-template-columns 0.4s cubic-bezier(0.16, 1, 0.3, 1)', flex: 1, overflow: 'hidden' }}>
         
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, background: colors.background }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, background: '#ffffff' }}>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', background: colors.cardBg, borderBottom: `1px solid ${colors.border}` }}>
             <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
@@ -220,7 +213,7 @@ const ExpenseManager = () => {
             </div>
           </div>
 
-          <div style={{ background: colors.cardBg, borderBottom: `1px solid ${colors.border}`, padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', position: 'sticky', top: '0', zIndex: 15, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ background: '#ffffff', borderBottom: `1px solid ${colors.border}`, padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: colors.bgLight, borderRadius: '10px', padding: '8px 14px', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, flex: 1, maxWidth: '280px', border: `1px solid ${colors.border}` }}>
               <input type="text" placeholder="Search keywords..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textDark, fontFamily: 'inherit', width: '100%' }} />
             </div>
@@ -242,7 +235,7 @@ const ExpenseManager = () => {
             </div>
           </div>
 
-          <div style={{ flex: 1, overflow: 'auto', background: colors.background, padding: '20px 24px' }}>
+          <div style={{ flex: 1, overflow: 'auto', background: '#ffffff', padding: '20px 24px' }}>
             <div style={{ background: colors.cardBg, borderRadius: '16px', border: `1px solid ${colors.border}`, overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>

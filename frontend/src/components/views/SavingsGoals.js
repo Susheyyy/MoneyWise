@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useGetWalletsQuery } from '../../features/wallets/walletApi'; // Assumes walletApi endpoint handles available wallets fetch
+import { useGetWalletsQuery } from '../../features/wallets/walletApi'; 
 import {
   useGetGoalsQuery,
   useCreateGoalMutation,
@@ -9,7 +9,7 @@ import {
 import { getErrorMessage } from '../../utils/errorHandler';
 
 const SavingsGoals = () => {
-  // LIVE CORE QUERIES & MUTATIONS HOOKS
+  
   const { data: dbGoals = [], isLoading: goalsLoading } = useGetGoalsQuery();
   const { data: dbWallets = [] } = useGetWalletsQuery();
   const [createGoal] = useCreateGoalMutation();
@@ -20,10 +20,10 @@ const SavingsGoals = () => {
   const [isNewGoalModalOpen, setIsNewGoalModalOpen] = useState(false);
   const [isAddFundsModalOpen, setIsAddFundsModalOpen] = useState(false);
   
-  // Track selected object reference instead of strings to populate accurate sub-views
+  
   const [selectedGoal, setSelectedGoal] = useState(null);
 
-  // New Goal Input Field State Elements
+  
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [monthlySavings, setMonthlySavings] = useState('');
@@ -32,7 +32,7 @@ const SavingsGoals = () => {
   const [category, setCategory] = useState('Tech & gadgets');
   const [notes, setNotes] = useState('');
 
-  // Contribution Input Field State Elements
+  
   const [contributionAmount, setContributionAmount] = useState('');
   const [selectedWalletId, setSelectedWalletId] = useState('');
   const [contributionNote, setContributionNote] = useState('');
@@ -58,7 +58,7 @@ const SavingsGoals = () => {
     setTimeout(() => setToast({ show: false, message: '' }), 4000);
   };
 
-  // MACRO SUMMARY CALCULATIONS STREAMED FROM DATABASE ARRAYS
+  
   const activeGoals = dbGoals.filter(g => g.currentSaved < g.targetAmount);
   const completedGoals = dbGoals.filter(g => g.currentSaved >= g.targetAmount);
   
@@ -66,7 +66,7 @@ const SavingsGoals = () => {
   const totalStillNeeded = activeGoals.reduce((sum, g) => sum + (g.targetAmount - g.currentSaved), 0);
   const totalMonthlyCommitment = activeGoals.reduce((sum, g) => sum + g.monthlySavingsTarget, 0);
 
-  // FILTERED COMPONENT MAPPING BALANCER
+  
   const filteredGoals = dbGoals.filter(g => {
     if (activeTab === 'completed') return g.currentSaved >= g.targetAmount;
     if (activeTab === 'all') return true;
@@ -83,7 +83,7 @@ const handleCreateGoal = async (e) => {
       await createGoal({
         name: goalName,
         targetAmount: Number(targetAmount),
-        monthlySavings: Number(monthlySavings), // <-- CHANGED TO MATCH FRONTEND HOOK STATE STREAMS
+        monthlySavings: Number(monthlySavings), 
         category,
         startDate,
         targetDate: targetDate || undefined,
@@ -94,7 +94,7 @@ const handleCreateGoal = async (e) => {
       setIsNewGoalModalOpen(false);
       setGoalName(''); setTargetAmount(''); setMonthlySavings(''); setNotes('');
     } catch (err) {
-      // Shorthand error logger that intercepts actual raw Mongo validation failures
+      
       triggerToast(getErrorMessage(err, 'Failed to save new objective vector.'));
     }
   };
@@ -117,7 +117,7 @@ const handleCreateGoal = async (e) => {
       setIsAddFundsModalOpen(false);
       setContributionAmount(''); setContributionNote('');
       
-      // Keep selected document structure current with mutation results
+      
       setSelectedGoal(res);
     } catch (err) {
       triggerToast(getErrorMessage(err, 'Transaction allocation refused by balance constraints.'));
@@ -151,7 +151,7 @@ const handleCreateGoal = async (e) => {
 
       {!selectedGoal ? (
         <>
-          {/* VIEW MODULE A: LIST MATRIX CORES */}
+          {}
           <div style={{ display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', letterSpacing: '0.8px', borderLeft: `3px solid ${uiColors.accentGreen}`, paddingLeft: '12px', marginBottom: '4px', margin: 0 }}>Savings Goals Matrix</h3>
@@ -162,7 +162,7 @@ const handleCreateGoal = async (e) => {
             </button>
           </div>
 
-          {/* DYNAMIC SUMMARIES HUD PANEL GRID */}
+          {}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: `1px solid ${uiColors.border}`, borderRadius: '12px', background: '#FAFCFC', overflow: 'hidden' }}>
             <div style={{ padding: '20px', borderRight: `1px solid ${uiColors.border}` }}>
               <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', color: uiColors.textMuted, textTransform: 'uppercase' }}>TOTAL SAVED</div>
@@ -191,7 +191,7 @@ const handleCreateGoal = async (e) => {
             ))}
           </div>
 
-          {/* DYNAMIC CARD GENERATION GRID */}
+          {}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {filteredGoals.map((g) => {
               const currentPct = Math.round((g.currentSaved / g.targetAmount) * 100) || 0;
@@ -251,7 +251,7 @@ const handleCreateGoal = async (e) => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.2fr 1fr', gap: '28px', alignItems: 'start' }}>
             
-            {/* COLUMN 1: LIVE SERVER ASSIGNED MILESTONES FLAGS */}
+            {}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <span style={{ fontSize: '10px', fontWeight: 700, color: uiColors.textMuted, textTransform: 'uppercase', letterSpacing: '1px' }}>MILESTONES</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingLeft: '4px' }}>
@@ -270,7 +270,7 @@ const handleCreateGoal = async (e) => {
               </div>
             </div>
 
-            {/* COLUMN 2: REAL HISTORIC DROPS SUB-DOCUMENTS MATRIX */}
+            {}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <span style={{ fontSize: '10px', fontWeight: 700, color: uiColors.textMuted, textTransform: 'uppercase', letterSpacing: '1px' }}>CONTRIBUTIONS REVIEWS</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '280px', overflowY: 'auto' }}>
@@ -293,7 +293,7 @@ const handleCreateGoal = async (e) => {
               </div>
             </div>
 
-            {/* COLUMN 3: ENGINE ESTIMATES PANEL BLOCK */}
+            {}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <span style={{ fontSize: '10px', fontWeight: 700, color: uiColors.textMuted, textTransform: 'uppercase', letterSpacing: '1px' }}>FORECAST</span>
               <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '12px', padding: '20px', background: '#FAFCFC', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -313,7 +313,7 @@ const handleCreateGoal = async (e) => {
         </>
       )}
 
-      {/* NEW OBJECTIVE ENTRY WINDOW MODAL */}
+      {}
       {isNewGoalModalOpen && (
         <>
           <div onClick={() => setIsNewGoalModalOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(30,51,54,0.45)', backdropFilter: 'blur(3px)', zIndex: 5000 }} />
@@ -369,7 +369,7 @@ const handleCreateGoal = async (e) => {
         </>
       )}
 
-      {/* DYNAMIC COMPONENT: CENTRED CONTRIB OVERLAY PANEL FORM */}
+      {}
       {isAddFundsModalOpen && (
         <>
           <div onClick={() => setIsAddFundsModalOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(30,51,54,0.45)', backdropFilter: 'blur(3px)', zIndex: 6000 }} />
@@ -399,7 +399,7 @@ const handleCreateGoal = async (e) => {
                 </div>
               </div>
 
-              {/* DYNAMIC SYSTEM CHIPS PILLS STREAMED FROM MONGODB USER WALLETS COLLECTION */}
+              {}
               <div>
                 <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: uiColors.textMuted, marginBottom: '8px' }}>SOURCE WALLET</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

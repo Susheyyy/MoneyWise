@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ClickSpark from './ClickSpark';
 import RotatingText from './RotatingText';
@@ -420,7 +420,7 @@ const CSS = `
   .foot-copy { font-family: var(--FB); font-size: 11px; color: var(--ink-pale); letter-spacing: .3px; }
 `;
 
-/* ─── Small inline icons ─────────────────────── */
+
 const IW  = ({c}) => <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>;
 const IU  = ({c}) => <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>;
 const IT  = ({c}) => <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
@@ -431,7 +431,7 @@ const Chk = () => <svg style={{width:8,height:8}} viewBox="0 0 12 12" fill="none
 const ChkW = () => <svg style={{width:8,height:8}} viewBox="0 0 12 12" fill="none" stroke="#1D9E75" strokeWidth="2.2" strokeLinecap="round"><polyline points="2,6 5,9 10,3"/></svg>;
 const ArrowRight = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>;
 
-/* ─── Feature data ───────────────────────────── */
+
 const FEATURES = [
   {
     id: 0, num: '01', label: 'Expenses',
@@ -489,7 +489,7 @@ const FEATURES = [
   },
 ];
 
-/* ─── Feature mini-previews ──────────────────── */
+
 const FeaturePreview = ({ type }) => {
   const circles = (
     <>
@@ -626,7 +626,7 @@ const FeaturePreview = ({ type }) => {
   );
 };
 
-/* ─── Live preview panels ────────────────────── */
+
 const PreviewPanel = ({ tab }) => {
   if (tab === 'split') return (
     <div className="prev-panel">
@@ -707,21 +707,21 @@ const PreviewPanel = ({ tab }) => {
   );
 };
 
-/* ─── Main component ─────────────────────────── */
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const [tab,         setTab]         = useState('split');
   const [activeFeat,  setActiveFeat]  = useState(0);
   const [navScrolled, setNavScrolled] = useState(false);
 
-  /* nav shadow on scroll */
+  
   useEffect(() => {
     const onScroll = () => setNavScrolled(window.scrollY > 12);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  /* smooth-scroll for nav links */
+  
   const scrollTo = (id) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -747,7 +747,7 @@ const LandingPage = () => {
 
       <ClickSpark sparkColor="#1D9E75" sparkSize={9} sparkRadius={18} sparkCount={8} duration={500}>
 
-      {/* ── NAV ── */}
+      {}
       <nav className={`nav${navScrolled?' scrolled':''}`}>
         <div className="nav-brand" onClick={() => window.scrollTo({top:0,behavior:'smooth'})}>MONEYWISE</div>
         <div className="nav-links">
@@ -761,7 +761,7 @@ const LandingPage = () => {
         </div>
       </nav>
 
-      {/* ── HERO ── */}
+      {}
       <div className="hero">
         <div className="hero-left">
           <h1 className="hero-h1 afu d1">
@@ -816,7 +816,7 @@ const LandingPage = () => {
               <div className="hc-mini"><div className="hc-mini-l">Savings</div><div className="hc-mini-v">₹7,720</div></div>
             </div>
           </div>
-          {/* floating chips — positioned relative to hero-right, not hcard */}
+          {}
           <div className="hchip afi d6" style={{top:-18,right:-22,animationDuration:'5s',animationDelay:'2s'}}>
             <div className="hchip-dot" style={{background:'#1D9E75'}}/>MacBook goal — 62% saved
           </div>
@@ -826,7 +826,7 @@ const LandingPage = () => {
         </div>
       </div>
 
-      {/* ── TRUST MARQUEE ── */}
+      {}
       <div className="trust-band">
         <div className="trust-track">
           {marqItems.map((t,i) => (
@@ -838,7 +838,7 @@ const LandingPage = () => {
         </div>
       </div>
 
-      {/* ── FEATURES — ONE CARD AT A TIME ── */}
+      {}
       <section className="feat-section" id="features">
         <div className="feat-inner">
           <div className="feat-top">
@@ -853,7 +853,7 @@ const LandingPage = () => {
             </p>
           </div>
 
-          {/* Tab nav */}
+          {}
           <div className="feat-tabs">
             {FEATURES.map((ft) => (
               <button
@@ -866,7 +866,7 @@ const LandingPage = () => {
             ))}
           </div>
 
-          {/* Single card + mini preview */}
+          {}
           <div className="feat-display" key={activeFeat}>
             <div className="feat-card-main">
               <div style={{position:'absolute',top:0,left:0,right:0,height:3,borderRadius:'16px 16px 0 0',background:f.accentColor,animation:'lineGrow .55s cubic-bezier(0.22,1,0.36,1) both'}}/>
@@ -875,7 +875,7 @@ const LandingPage = () => {
                 <svg viewBox="0 0 24 24" style={{width:22,height:22}} fill="none"
                   stroke={f.iconBg==='rgba(29,158,117,.25)'?'#fff':f.accentColor}
                   strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  {/* Render the correct path by re-using the component approach */}
+                  {}
                 </svg>
                 <div style={{width:22,height:22}}>{f.icon}</div>
               </div>
@@ -892,7 +892,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
+      {}
       <section className="how-sec" id="how-it-works">
         <div className="how-inner">
           <div className="how-head">
@@ -917,7 +917,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── LIVE PREVIEW ── */}
+      {}
       <section className="prev-sec">
         <div className="prev-wrap">
           <div className="prev-sticky">
@@ -944,7 +944,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
+      {}
       <section className="plan-sec" id="pricing">
         <div className="plan-ring" style={{width:500,height:500}}/>
         <div className="plan-ring" style={{width:920,height:920,animationDuration:'65s',animationDirection:'reverse'}}/>
@@ -980,7 +980,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── FINAL CTA ── */}
+      {}
       <section className="cta-sec">
         <div className="cta-ring" style={{width:280,height:280}}/>
         <div className="cta-ring" style={{width:560,height:560,animationDuration:'52s',animationDirection:'reverse'}}/>
@@ -992,7 +992,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {}
       <footer className="footer">
         <div className="foot-copy">© 2026 MoneyWise</div>
       </footer>

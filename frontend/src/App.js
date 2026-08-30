@@ -15,6 +15,7 @@ import RoommateSplitter from './components/views/RoommateSplitter';
 import SubscriptionVault from './components/views/SubscriptionVault';
 import SavingsGoals from './components/views/SavingsGoals';
 import ProfileSettings from './components/views/ProfileSettings';
+import AiAnalysis from './components/views/AiAnalysis';
 
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
@@ -79,6 +80,17 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <SubscriptionVault />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route 
+        path="/analysis" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <AiAnalysis />
             </Layout>
           </ProtectedRoute>
         }

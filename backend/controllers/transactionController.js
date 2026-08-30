@@ -37,7 +37,7 @@ exports.updateTransaction = async (req, res) => {
     
     const { description, amount, category, wallet, type, paymentMode, tags, billUrl, date } = req.body;
     
-    // Reverse old transaction from wallet
+    
     const oldWallet = await Wallet.findOne({ _id: oldTxn.wallet, user: req.user.id }).session(session);
     if (oldWallet) {
       const oldNumericalMutation = oldTxn.type === 'income' ? -oldTxn.amount : oldTxn.amount;
@@ -45,7 +45,7 @@ exports.updateTransaction = async (req, res) => {
       await oldWallet.save({ session });
     }
 
-    // Apply new transaction to wallet
+    
     const newWalletId = wallet || oldTxn.wallet;
     const newWallet = await Wallet.findOne({ _id: newWalletId, user: req.user.id }).session(session);
     if (newWallet) {
@@ -56,7 +56,7 @@ exports.updateTransaction = async (req, res) => {
       await newWallet.save({ session });
     }
 
-    // Update transaction
+    
     const updatedTxn = await Transaction.findOneAndUpdate(
       { _id: txnId, user: req.user.id },
       { description, amount, category, wallet, type, paymentMode, tags, billUrl, date },

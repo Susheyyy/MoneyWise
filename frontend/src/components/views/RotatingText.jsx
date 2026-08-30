@@ -14,7 +14,7 @@ function RotatingText({
   loop = true,
   auto = true,
 }) {
-  const [phase, setPhase]               = useState('visible'); // 'visible' | 'exit' | 'enter'
+  const [phase, setPhase]               = useState('visible'); 
   const [displayIndex, setDisplayIndex] = useState(0);
   const timerRef = useRef(null);
 
@@ -22,11 +22,11 @@ function RotatingText({
     if (!auto || texts.length < 2) return;
 
     timerRef.current = setInterval(() => {
-      // Start exit animation
+      
       setPhase('exit');
 
       setTimeout(() => {
-        // Swap text mid-animation
+        
         setDisplayIndex(prev => {
           const next = prev === texts.length - 1 ? (loop ? 0 : prev) : prev + 1;
           return next;

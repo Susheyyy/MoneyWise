@@ -2,7 +2,7 @@ import React from 'react';
 import { useGetIntelligenceStatsQuery } from '../../features/transactions/transactionApi';
 
 const SmartInsights = () => {
-  // Pull live data directly out of the dynamic Gemini-integrated API slice hook
+  
   const { data: intelligence, isLoading, error } = useGetIntelligenceStatsQuery();
 
   if (isLoading) {
@@ -21,7 +21,7 @@ const SmartInsights = () => {
     );
   }
 
-  // Extract metrics directly from your Python engine return payload
+  
   const hasAnomalies = intelligence.anomalies && intelligence.anomalies.length > 0;
   const primaryRecommendation = intelligence.recommendations?.[0] || "Review transaction burn rates to establish optimized category limit paths.";
 
@@ -41,7 +41,7 @@ const SmartInsights = () => {
       </div>
 
       <div style={{ fontSize: '12px', color: '#085041', lineHeight: '1.5', fontWeight: 500 }}>
-        {/* Render live message text passed back from Gemini AI optimization prompt strings */}
+        {}
         "{primaryRecommendation}"
       </div>
 

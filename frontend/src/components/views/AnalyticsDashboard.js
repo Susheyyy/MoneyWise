@@ -1,5 +1,4 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
 import { 
   useGetIntelligenceStatsQuery, 
   useGetMonthlySummaryQuery, 
@@ -12,7 +11,6 @@ import { useTheme } from '../../context/ThemeContext';
 ChartJS.register(...registerables);
 
 const AnalyticsDashboard = ({ summary, expenses, categories }) => {
-  const { user } = useSelector((state) => state.auth);
   const { data: intelligence, isLoading } = useGetIntelligenceStatsQuery();
   const { data: monthlySummary } = useGetMonthlySummaryQuery();
   const { data: categoryBreakdown } = useGetCategoryBreakdownQuery();
@@ -102,12 +100,13 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
   );
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 294px', gap: '24px', width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ padding: '28px 32px', backgroundColor: '#ffffff', minHeight: '100%' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: '24px', width: '100%', boxSizing: 'border-box' }}>
       
       <main style={{ display: 'flex', flexDirection: 'column', gap: '24px', overflow: 'hidden' }}>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr)', gap: '20px' }}>
-          {/* Main Hero Metric Card */}
+          {}
           <div style={{ 
             background: `linear-gradient(135deg, ${colors.tealDark}, ${colors.tealPrimary})`, 
             borderRadius: '20px', 
@@ -158,7 +157,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
             </div>
           </div>
 
-          {/* Line Chart */}
+          {}
           <div style={{ background: colors.cardBg, borderRadius: '20px', padding: '24px', border: `1px solid ${colors.border}`, boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ fontSize: `${15 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>Monthly Trend</span>
@@ -267,6 +266,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
           </div>
         </div>
       </aside>
+    </div>
     </div>
   );
 };

@@ -6,7 +6,7 @@ import { categoryApi } from '../features/categories/categoryApi';
 import { subscriptionApi } from '../features/subscriptions/subscriptionApi'; 
 import { groupApi } from '../features/groups/groupApi';
 import { goalApi } from '../features/goals/goalApi';
-import { walletApi } from '../features/wallets/walletApi'; // <-- ADD THIS IMPORT
+import { walletApi } from '../features/wallets/walletApi'; 
 
 export const store = configureStore({
   reducer: {
@@ -17,7 +17,7 @@ export const store = configureStore({
     [subscriptionApi.reducerPath]: subscriptionApi.reducer, 
     [groupApi.reducerPath]: groupApi.reducer,
     [goalApi.reducerPath]: goalApi.reducer,
-    [walletApi.reducerPath]: walletApi.reducer, // <-- REGISTER REDUCER
+    [walletApi.reducerPath]: walletApi.reducer, 
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -27,5 +27,5 @@ export const store = configureStore({
       .concat(subscriptionApi.middleware)
       .concat(groupApi.middleware)
       .concat(goalApi.middleware)
-      .concat(walletApi.middleware), // <-- APPEND MIDDLEWARE
+      .concat(walletApi.middleware), 
 });

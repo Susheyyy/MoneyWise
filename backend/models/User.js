@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Cryptographic pass-phrase entity required'],
     validate: {
       validator: function(v) {
-        // Skip validation if the password is already hashed (e.g. starts with $2a$ or $2b$)
+        
         if (/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(v)) return true;
         return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/.test(v);
       },
