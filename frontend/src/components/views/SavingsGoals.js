@@ -7,8 +7,10 @@ import {
   useDeleteGoalMutation
 } from '../../features/goals/goalApi';
 import { getErrorMessage } from '../../utils/errorHandler';
+import { useTheme } from '../../context/ThemeContext';
 
 const SavingsGoals = () => {
+  const { theme, colors } = useTheme();
   
   const { data: dbGoals = [], isLoading: goalsLoading } = useGetGoalsQuery();
   const { data: dbWallets = [] } = useGetWalletsQuery();
@@ -40,17 +42,17 @@ const SavingsGoals = () => {
   const [toast, setToast] = useState({ show: false, message: '' });
 
   const uiColors = {
-    tealPrimary: '#364C4F',
-    tealDark: '#1E3336',
-    border: '#E0E8E8',
-    white: '#ffffff',
-    accentGreen: '#1D9E75',
-    textMuted: '#9BB5B8',
-    textDark: '#1E3336',
-    lightGreen: '#E1F5EE',
-    darkGreen: '#085041',
-    lightBlue: '#E6F1FB',
-    darkBlue: '#185FA5'
+    tealPrimary: colors.tealPrimary,
+    tealDark: colors.textDark,
+    border: colors.border,
+    white: colors.white,
+    accentGreen: colors.green,
+    textMuted: colors.textMuted,
+    textDark: colors.textDark,
+    lightGreen: theme === 'Dark' ? 'rgba(29, 158, 117, 0.15)' : '#E1F5EE',
+    darkGreen: colors.green,
+    lightBlue: theme === 'Dark' ? 'rgba(56, 163, 165, 0.15)' : '#E6F1FB',
+    darkBlue: colors.tealPrimary
   };
 
   const triggerToast = (message) => {
@@ -141,7 +143,7 @@ const handleCreateGoal = async (e) => {
   }
 
   return (
-    <div style={{ background: uiColors.white, padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: '32px', minHeight: '100vh', fontFamily: "'Montserrat', sans-serif" }}>
+    <div style={{ background: colors.background, padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: '32px', minHeight: '100%', fontFamily: "'Montserrat', sans-serif" }}>
       
       {toast.show && (
         <div style={{ position: 'fixed', top: '24px', right: '24px', background: uiColors.lightGreen, borderLeft: `4px solid ${uiColors.accentGreen}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(30,51,54,0.1)', zIndex: 10000, color: uiColors.darkGreen, fontWeight: 600, fontSize: '0.85rem' }}>
@@ -163,7 +165,7 @@ const handleCreateGoal = async (e) => {
           </div>
 
           {}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: `1px solid ${uiColors.border}`, borderRadius: '12px', background: '#FAFCFC', overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: `1px solid ${uiColors.border}`, borderRadius: '12px', background: colors.bgLight, overflow: 'hidden' }}>
             <div style={{ padding: '20px', borderRight: `1px solid ${uiColors.border}` }}>
               <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', color: uiColors.textMuted, textTransform: 'uppercase' }}>TOTAL SAVED</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: uiColors.tealDark, marginTop: '6px' }}>₹{totalSavedAllTime.toLocaleString('en-IN')}</div>

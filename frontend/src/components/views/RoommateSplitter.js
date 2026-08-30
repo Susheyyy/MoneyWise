@@ -10,8 +10,10 @@ import {
   useRemoveGroupMatrixMutation
 } from '../../features/groups/groupApi';
 import { getErrorMessage } from '../../utils/errorHandler';
+import { useTheme } from '../../context/ThemeContext';
 
 const RoommateSplitter = () => {
+  const { theme, colors } = useTheme();
   const currentUser = useSelector((state) => state.auth.user);
   const { data: groups = [], refetch } = useGetGroupsQuery();
   
@@ -68,17 +70,17 @@ const RoommateSplitter = () => {
     useGetSettlementSummaryQuery(activeGroupId, { skip: !activeGroupId });
 
   const uiColors = {
-    tealPrimary: '#364C4F',
-    tealDark: '#1E3336',
-    border: '#E3ECEC',
-    white: '#ffffff',
-    bgMain: '#F4F7F7',
-    greenText: '#0F6E56',
-    greenBg: '#E1F5EE',
-    redText: '#9E2D2D',
-    redBg: '#FCEBEB',
-    textMuted: '#A2B6B8',
-    bannerGreenGrad: 'linear-gradient(135deg, #1D292B 0%, #628B91 51%, #1D292B 100%)',
+    tealPrimary: colors.tealPrimary,
+    tealDark: colors.textDark,
+    border: colors.border,
+    white: colors.white,
+    bgMain: colors.background,
+    greenText: colors.green,
+    greenBg: theme === 'Dark' ? 'rgba(29, 158, 117, 0.15)' : '#E1F5EE',
+    redText: colors.red,
+    redBg: theme === 'Dark' ? 'rgba(217, 83, 79, 0.15)' : '#FCEBEB',
+    textMuted: colors.textMuted,
+    bannerGreenGrad: theme === 'Dark' ? 'linear-gradient(135deg, #1A282A 0%, #2A484C 51%, #1A282A 100%)' : 'linear-gradient(135deg, #1D292B 0%, #628B91 51%, #1D292B 100%)',
     avatarBg: ['#D6EAF8', '#D5F5E3', '#FCF3CF', '#FEDBB6', '#E8DAEF']
   };
 
@@ -235,7 +237,7 @@ const RoommateSplitter = () => {
 
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(30, 51, 54, 0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#fff', padding: '28px', borderRadius: '16px', width: '440px', border: `1px solid ${uiColors.border}`, boxShadow: '0 12px 36px rgba(0,0,0,0.15)' }}>
+          <div style={{ background: uiColors.white, padding: '28px', borderRadius: '16px', width: '440px', border: `1px solid ${uiColors.border}`, boxShadow: '0 12px 36px rgba(0,0,0,0.15)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <span style={{ fontSize: '12px', fontWeight: 700, color: uiColors.tealPrimary }}>LOG SHARED EXPENSE</span>
               <span onClick={() => setShowExpenseModal(false)} style={{ cursor: 'pointer', fontWeight: 'bold', color: uiColors.textMuted }}>✕</span>
@@ -289,7 +291,7 @@ const RoommateSplitter = () => {
 
       {showEditModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(30, 51, 54, 0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#fff', padding: '32px', borderRadius: '16px', width: '400px', border: `1px solid ${uiColors.border}`, boxShadow: '0 12px 36px rgba(0,0,0,0.12)' }}>
+          <div style={{ background: uiColors.white, padding: '32px', borderRadius: '16px', width: '400px', border: `1px solid ${uiColors.border}`, boxShadow: '0 12px 36px rgba(0,0,0,0.12)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: uiColors.tealPrimary, letterSpacing: '1px' }}>GROUP SETTINGS</span>
               <span onClick={() => { setShowEditModal(false); setIsDeleteConfirming(false); }} style={{ cursor: 'pointer', fontWeight: 'bold', color: uiColors.textMuted, fontSize: '14px' }}>✕</span>
@@ -360,7 +362,7 @@ const RoommateSplitter = () => {
                 <span style={{ fontSize: '9px', fontWeight: 700, color: uiColors.textMuted }}>STAGED FRIENDS ({stagedEmails.length})</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '80px', overflowY: 'auto' }}>
                   {stagedEmails.map(email => (
-                    <div key={email} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: `1px solid ${uiColors.border}`, padding: '4px 8px', borderRadius: '6px', fontSize: '10px', color: uiColors.tealPrimary }}>
+                    <div key={email} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: uiColors.white, border: `1px solid ${uiColors.border}`, padding: '4px 8px', borderRadius: '6px', fontSize: '10px', color: uiColors.tealPrimary }}>
                       <span>{email}</span>
                       <span onClick={() => setStagedEmails(stagedEmails.filter(e => e !== email))} style={{ cursor: 'pointer', fontWeight: 700, color: uiColors.redText }}>✕</span>
                     </div>

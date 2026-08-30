@@ -11,7 +11,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   
   const { data: dbCategories = [], isLoading: catsLoading } = useGetCategoriesQuery();
   const [updateCategoryBudget] = useUpdateCategoryBudgetMutation();
-  const { theme, setTheme, fontSize, setFontSize } = useTheme();
+  const { theme, setTheme, fontSize, setFontSize, colors } = useTheme();
 
   const [activeMenu, setActiveMenu] = useState('Profile');
 
@@ -94,15 +94,15 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, compactTable, hideBalance, liveBudgets, savedData, dbCategories]);
 
   const uiColors = {
-    tealPrimary: '#364C4F',
-    tealDark: '#1E3336',
-    border: '#E0E8E8',
-    white: '#ffffff',
-    bgMain: '#ffffff',
-    accentGreen: '#1D9E75',
-    textMuted: '#9BB5B8',
-    redText: '#A32D2D',
-    redBg: '#FCEBEB'
+    tealPrimary: colors.tealPrimary,
+    tealDark: colors.textDark,
+    border: colors.border,
+    white: colors.white,
+    bgMain: colors.background,
+    accentGreen: colors.green,
+    textMuted: colors.textMuted,
+    redText: colors.red,
+    redBg: theme === 'Dark' ? 'rgba(217,83,79,0.15)' : '#FCEBEB'
   };
 
   const showNotification = (message, type = 'success') => {
@@ -179,7 +179,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: uiColors.white, fontFamily: "'Montserrat', sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', background: uiColors.bgMain, color: uiColors.tealDark, fontFamily: "'Montserrat', sans-serif" }}>
       
       {toast.show && (
         <div style={{ position: 'fixed', top: '24px', right: '24px', background: toast.type === 'success' ? '#E1F5EE' : uiColors.redBg, borderLeft: `4px solid ${toast.type === 'success' ? '#0F6E56' : uiColors.redText}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(30,51,54,0.12)', zIndex: 10000, color: toast.type === 'success' ? '#085041' : uiColors.redText, fontWeight: 600, fontSize: '0.85rem' }}>
@@ -210,8 +210,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr) 340px', background: uiColors.white }}>
-        <aside style={{ background: '#fff', borderRight: `1px solid ${uiColors.border}`, padding: '8px 0 24px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr) 340px', background: uiColors.bgMain }}>
+        <aside style={{ background: uiColors.white, borderRight: `1px solid ${uiColors.border}`, padding: '8px 0 24px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '16px 24px 8px 24px' }}>Account</div>
           <div onClick={() => setActiveMenu('Profile')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Profile' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Profile' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Profile' ? '#F0FAF6' : 'transparent' }}>Profile Details</div>
           <div onClick={() => setActiveMenu('Plan')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Plan' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Plan' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Plan' ? '#F0FAF6' : 'transparent' }}>Plan</div>
@@ -285,8 +285,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                 </div>
               </div>
 
-              <section style={{ border: '1.5px solid #F5BFBF', borderRadius: '14px', overflow: 'hidden', background: '#ffffff', marginTop: '16px' }}>
-                <div style={{ padding: '20px 24px', borderBottom: '1px solid #FEF0F0', background: '#ffffff' }}>
+              <section style={{ border: `1.5px solid ${uiColors.border}`, borderRadius: '14px', overflow: 'hidden', background: uiColors.white, marginTop: '16px' }}>
+                <div style={{ padding: '20px 24px', borderBottom: `1px solid ${uiColors.border}`, background: uiColors.white }}>
                   <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#791F1F', fontFamily: "'Montserrat', sans-serif" }}>Danger zone</h4>
                 </div>
                 <div style={{ padding: '8px 24px' }}>
@@ -374,7 +374,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '24px' }}>Payment Gateways Matrix</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {['Primary Bank Account', 'GPay UPI Wallet', 'Cash Ledger'].map(w => (
-                  <div key={w} style={{ padding: '16px 20px', border: `1px solid ${uiColors.border}`, borderRadius: '10px', fontSize: '13px', color: uiColors.tealDark, fontWeight: 500, background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div key={w} style={{ padding: '16px 20px', border: `1px solid ${uiColors.border}`, borderRadius: '10px', fontSize: '13px', color: uiColors.tealDark, fontWeight: 500, background: uiColors.white, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                     {w}
                   </div>
                 ))}
@@ -444,7 +444,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                         onClick={() => setTheme(t.id)}
                         style={{
                           border: `1.5px solid ${isThemeSelected ? '#1D9E75' : uiColors.border}`,
-                          borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: '#fff',
+                          borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', background: uiColors.white,
                           display: 'flex', flexDirection: 'column', height: '88px', transition: 'border-color 0.2s'
                         }}
                       >
@@ -543,7 +543,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
         </main>
 
-        <aside style={{ background: '#fff', borderLeft: `1px solid ${uiColors.border}`, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '28px', overflowY: 'auto' }}>
+        <aside style={{ background: uiColors.white, borderLeft: `1px solid ${uiColors.border}`, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '28px', overflowY: 'auto' }}>
           <div>
             <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', marginBottom: '14px' }}>Your Stats</div>
             

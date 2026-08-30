@@ -100,7 +100,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
   );
 
   return (
-    <div style={{ padding: '28px 32px', backgroundColor: '#ffffff', minHeight: '100%' }}>
+    <div style={{ padding: '28px 32px', backgroundColor: colors.background, minHeight: '100%' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: '24px', width: '100%', boxSizing: 'border-box' }}>
       
       <main style={{ display: 'flex', flexDirection: 'column', gap: '24px', overflow: 'hidden' }}>

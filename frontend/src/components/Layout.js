@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logout } from '../features/auth/authSlice';
+import { useTheme } from '../context/ThemeContext';
 
 const NAV_ITEMS = [
   {
@@ -9,8 +10,8 @@ const NAV_ITEMS = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: (active) => (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-        stroke={active ? '#0F6E56' : '#94A3B8'} strokeWidth="2"
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke={active ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="9" rx="1.5" />
         <rect x="14" y="3" width="7" height="5" rx="1.5" />
@@ -24,8 +25,8 @@ const NAV_ITEMS = [
     label: 'Expenses',
     path: '/expenses',
     icon: (active) => (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-        stroke={active ? '#0F6E56' : '#94A3B8'} strokeWidth="2"
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke={active ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
         <path d="M16 8H8M16 12H8M13 16H8" />
@@ -37,8 +38,8 @@ const NAV_ITEMS = [
     label: 'AI Analysis',
     path: '/analysis',
     icon: (active) => (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-        stroke={active ? '#0F6E56' : '#94A3B8'} strokeWidth="2"
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke={active ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" y1="20" x2="18" y2="10" />
         <line x1="12" y1="20" x2="12" y2="4" />
@@ -51,8 +52,8 @@ const NAV_ITEMS = [
     label: 'Savings Goals',
     path: '/savings-goals',
     icon: (active) => (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-        stroke={active ? '#0F6E56' : '#94A3B8'} strokeWidth="2"
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke={active ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
         <circle cx="12" cy="12" r="6" />
@@ -65,8 +66,8 @@ const NAV_ITEMS = [
     label: 'Roommate Split',
     path: '/roommate-matrix',
     icon: (active) => (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-        stroke={active ? '#0F6E56' : '#94A3B8'} strokeWidth="2"
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke={active ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round">
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
@@ -79,8 +80,8 @@ const NAV_ITEMS = [
     label: 'Subscriptions',
     path: '/subscriptions',
     icon: (active) => (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-        stroke={active ? '#0F6E56' : '#94A3B8'} strokeWidth="2"
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke={active ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
         <polyline points="21 3 21 8 16 8" />
@@ -94,8 +95,10 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
+  const { colors } = useTheme();
 
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [targetReminderDay] = useState(10);
   const [hasLoggedMonthlySavings, setHasLoggedMonthlySavings] = useState(false);
 
@@ -126,234 +129,130 @@ const Layout = ({ children }) => {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#ffffff',
+      backgroundColor: colors.background,
       display: 'flex',
       fontFamily: "'Montserrat', sans-serif",
-      fontSize: '13px'
+      fontSize: '13px',
+      transition: 'background-color 0.2s ease',
     }}>
-      {}
+      {/* ── SOLID SIDEBAR (SLACK STYLE) ───────────────────────────── */}
       <nav style={{
-        width: '240px',
+        width: '72px',
         flexShrink: 0,
-        backgroundColor: '#ffffff',
-        borderRight: '1px solid #E8EEED',
+        backgroundColor: '#1E3336', // Pinned solid ink/dark-teal color
         display: 'flex',
         flexDirection: 'column',
+        alignItems: 'center',
         position: 'fixed',
         top: 0,
         bottom: 0,
         left: 0,
         zIndex: 200,
-        overflowY: 'auto',
-        overflowX: 'hidden',
+        padding: '24px 0',
+        transition: 'all 0.2s ease',
       }}>
-        {}
-        <div
-          onClick={() => navigate('/dashboard')}
-          style={{
-            padding: '22px 20px 18px',
-            cursor: 'pointer',
-            userSelect: 'none',
-          }}
-        >
-          <span style={{
-            fontFamily: "'Oswald', sans-serif",
-            fontSize: '15px',
-            fontWeight: 600,
-            letterSpacing: '2.5px',
-            color: '#1E3336',
-            textTransform: 'uppercase',
-          }}>
-            MONEYWISE
-          </span>
-        </div>
-
-        {}
-        <div style={{ height: '1px', backgroundColor: '#F0F4F4', margin: '0 16px 12px' }} />
-
-        {}
-        <div style={{
-          padding: '0 20px 8px',
-          fontSize: '10px',
-          fontWeight: 700,
-          letterSpacing: '1.2px',
-          textTransform: 'uppercase',
-          color: '#B0C4C6'
-        }}>
-          Menu
-        </div>
-
-        {}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 10px' }}>
+        {/* Navigation items */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', alignItems: 'center' }}>
           {NAV_ITEMS.map(item => {
             const isActive = currentPath === item.path;
             return (
-              <button
-                key={item.key}
-                onClick={() => navigate(item.path)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: isActive ? '#EDF7F4' : 'transparent',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  outline: 'none',
-                  transition: 'background 0.15s ease',
-                  fontFamily: "'Montserrat', sans-serif",
-                }}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#F5F8F8'; }}
-                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-              >
-                {item.icon(isActive)}
-                <span style={{
-                  fontSize: '13px',
-                  fontWeight: isActive ? 600 : 500,
-                  color: isActive ? '#0F6E56' : '#364C4F',
-                  letterSpacing: '0.1px',
-                }}>
-                  {item.label}
-                </span>
-                {isActive && (
-                  <div style={{
-                    marginLeft: 'auto',
-                    width: '5px',
-                    height: '5px',
-                    borderRadius: '50%',
-                    background: '#0F6E56'
-                  }} />
-                )}
-              </button>
+              <div key={item.key} className="sidebar-tooltip-container">
+                <button
+                  onClick={() => navigate(item.path)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: isActive ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {item.icon(isActive)}
+                </button>
+                <span className="sidebar-tooltip">{item.label}</span>
+              </div>
             );
           })}
         </div>
-
-        {}
-        <div style={{ marginTop: 'auto', padding: '12px 10px 20px' }}>
-          <div style={{ height: '1px', backgroundColor: '#F0F4F4', margin: '0 6px 12px' }} />
-
-          {}
-          <button
-            onClick={() => navigate('/settings')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              width: '100%',
-              padding: '9px 12px',
-              borderRadius: '8px',
-              border: 'none',
-              background: currentPath === '/settings' ? '#EDF7F4' : 'transparent',
-              cursor: 'pointer',
-              textAlign: 'left',
-              outline: 'none',
-              fontFamily: "'Montserrat', sans-serif",
-              transition: 'background 0.15s ease',
-            }}
-            onMouseEnter={e => { if (currentPath !== '/settings') e.currentTarget.style.background = '#F5F8F8'; }}
-            onMouseLeave={e => { if (currentPath !== '/settings') e.currentTarget.style.background = 'transparent'; }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke={currentPath === '/settings' ? '#0F6E56' : '#94A3B8'}
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-            <span style={{
-              fontSize: '13px',
-              fontWeight: currentPath === '/settings' ? 600 : 500,
-              color: currentPath === '/settings' ? '#0F6E56' : '#364C4F',
-            }}>
-              Settings
-            </span>
-          </button>
-
-          {}
-          <button
-            onClick={handleSignOut}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              width: '100%',
-              padding: '9px 12px',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              textAlign: 'left',
-              outline: 'none',
-              fontFamily: "'Montserrat', sans-serif",
-              marginTop: '2px',
-              transition: 'background 0.15s ease',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(163,45,45,0.06)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0392B"
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-            </svg>
-            <span style={{ fontSize: '13px', fontWeight: 500, color: '#C0392B' }}>Sign Out</span>
-          </button>
-        </div>
       </nav>
 
-      {}
+      {/* ── MAIN CONTENT AREA ───────────────────────────────── */}
       <div style={{
         flex: 1,
-        marginLeft: '240px',
+        marginLeft: '72px',
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.background,
+        transition: 'all 0.2s ease',
       }}>
-        {}
+        {/* ── TOP NAVBAR ────────────────────────────────────── */}
         <header style={{
           display: 'flex',
           alignItems: 'center',
           padding: '0 32px',
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid #E8EEED',
+          backgroundColor: colors.white,
+          borderBottom: `1px solid ${colors.border}`,
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          height: '60px',
+          height: '64px',
           boxSizing: 'border-box',
+          transition: 'all 0.2s ease',
         }}>
-          {}
-          <div>
+          {/* Logo MW + Breadcrumb Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span 
+              onClick={() => navigate('/dashboard')}
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontSize: '15px',
+                fontWeight: 600,
+                color: colors.textDark,
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              MONEYWISE
+            </span>
+            <span style={{ color: colors.textMuted, fontSize: '14px', userSelect: 'none' }}>/</span>
             <span style={{
               fontFamily: "'Montserrat', sans-serif",
-              fontSize: '15px',
+              fontSize: '13px',
               fontWeight: 600,
-              color: '#1E3336',
-              letterSpacing: '-0.2px',
+              color: colors.textPrimary,
             }}>
               {pageTitle}
             </span>
           </div>
 
-          {}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
+          {/* Right side actions */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
 
-            {}
+            {/* Period pill */}
             <div style={{
-              border: '1px solid #E8EEED',
+              border: `1px solid ${colors.border}`,
               borderRadius: '20px',
               padding: '5px 14px',
               fontSize: '12px',
-              color: '#364C4F',
+              color: colors.textPrimary,
               fontWeight: 500,
-              backgroundColor: '#F8FAFA',
+              backgroundColor: colors.bgLight,
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               userSelect: 'none',
+              transition: 'all 0.2s ease',
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -364,14 +263,14 @@ const Layout = ({ children }) => {
               <span>{getActivePeriodString()}</span>
             </div>
 
-            {}
+            {/* Add expense quick button */}
             <button
               onClick={() => navigate('/expenses')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                backgroundColor: '#1E3336',
+                backgroundColor: colors.tealDark,
                 color: '#ffffff',
                 border: 'none',
                 padding: '7px 16px',
@@ -381,10 +280,10 @@ const Layout = ({ children }) => {
                 cursor: 'pointer',
                 outline: 'none',
                 fontFamily: "'Montserrat', sans-serif",
-                transition: 'background 0.2s',
+                transition: 'all 0.2s ease',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#0F6E56'}
-              onMouseLeave={e => e.currentTarget.style.background = '#1E3336'}
+              onMouseEnter={e => e.currentTarget.style.background = colors.green}
+              onMouseLeave={e => e.currentTarget.style.background = colors.tealDark}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -394,26 +293,26 @@ const Layout = ({ children }) => {
               Add expense
             </button>
 
-            {}
+            {/* Notification bell */}
             <button
               onClick={() => setIsNotificationOpen(!isNotificationOpen)}
               style={{
-                background: isNotificationOpen ? '#EDF7F4' : 'none',
+                background: isNotificationOpen ? (colors.theme === 'Dark' ? '#2E4C4F' : '#EDF7F4') : 'none',
                 border: '1px solid',
-                borderColor: isNotificationOpen ? '#B8DDD7' : '#E8EEED',
+                borderColor: isNotificationOpen ? colors.tealPrimary : colors.border,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '7px',
+                padding: '8px',
                 borderRadius: '10px',
                 cursor: 'pointer',
-                color: '#364C4F',
+                color: colors.textPrimary,
                 outline: 'none',
                 position: 'relative',
-                transition: 'all 0.2s',
+                transition: 'all 0.2s ease',
               }}
             >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#364C4F"
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -422,13 +321,13 @@ const Layout = ({ children }) => {
                 <span style={{
                   position: 'absolute', top: '5px', right: '5px',
                   width: '7px', height: '7px',
-                  background: '#0F6E56', borderRadius: '50%',
-                  border: '1.5px solid #fff'
+                  background: colors.green, borderRadius: '50%',
+                  border: `1.5px solid ${colors.white}`
                 }} />
               )}
             </button>
 
-            {}
+            {/* Notification dropdown */}
             {isNotificationOpen && (
               <>
                 <div
@@ -438,37 +337,37 @@ const Layout = ({ children }) => {
                 <div style={{
                   position: 'absolute',
                   top: '46px',
-                  right: '0',
+                  right: '46px',
                   width: '310px',
-                  backgroundColor: '#ffffff',
+                  backgroundColor: colors.white,
                   borderRadius: '14px',
                   boxShadow: '0 8px 30px rgba(30,51,54,0.12)',
-                  border: '1px solid #E8EEED',
+                  border: `1px solid ${colors.border}`,
                   padding: '18px 20px',
                   zIndex: 111,
                 }}>
                   {(isReminderDayActive() && !hasLoggedMonthlySavings) ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0F6E56', flexShrink: 0 }} />
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#085041', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Monthly Log</span>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: colors.green, flexShrink: 0 }} />
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: colors.green, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Monthly Log</span>
                       </div>
-                      <div style={{ fontSize: '13px', color: '#1E3336', lineHeight: '1.5', fontWeight: 500, marginBottom: '14px' }}>
+                      <div style={{ fontSize: '13px', color: colors.textPrimary, lineHeight: '1.5', fontWeight: 500, marginBottom: '14px' }}>
                         Have you allocated funds toward your active savings goals for this month?
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={() => { setHasLoggedMonthlySavings(true); setIsNotificationOpen(false); }}
-                          style={{ background: '#0F6E56', color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>
+                          style={{ background: colors.green, color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>
                           Yes, done
                         </button>
                         <button onClick={() => { navigate('/savings-goals'); setIsNotificationOpen(false); }}
-                          style={{ background: 'transparent', color: '#0F6E56', border: '1px solid #0F6E56', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>
+                          style={{ background: 'transparent', color: colors.green, border: `1px solid ${colors.green}`, padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>
                           Manage
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ padding: '8px 0', textAlign: 'center', color: '#9BB5B8', fontSize: '12px', fontWeight: 500 }}>
+                    <div style={{ padding: '8px 0', textAlign: 'center', color: colors.textMuted, fontSize: '12px', fontWeight: 500 }}>
                       No active alerts right now.
                     </div>
                   )}
@@ -476,37 +375,137 @@ const Layout = ({ children }) => {
               </>
             )}
 
-            {}
-            <div
-              onClick={() => navigate('/settings')}
-              title={`Logged in as ${user?.name || 'User'} · Open Settings`}
-              style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #1D9E75, #2B5854)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#ffffff',
-                cursor: 'pointer',
-                border: currentPath === '/settings' ? '2px solid #1D9E75' : '2px solid transparent',
-                transition: 'border-color 0.2s',
-                userSelect: 'none',
-              }}
-            >
-              {getInitials(user?.name)}
+            {/* Avatar with Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <div
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                title={`Logged in as ${user?.name || 'User'}`}
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #1D9E75, #2B5854)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  border: isProfileMenuOpen ? `2px solid ${colors.green}` : '2px solid transparent',
+                  transition: 'border-color 0.2s',
+                  userSelect: 'none',
+                }}
+              >
+                {getInitials(user?.name)}
+              </div>
+
+              {/* Profile Dropdown Menu */}
+              {isProfileMenuOpen && (
+                <>
+                  <div
+                    onClick={() => setIsProfileMenuOpen(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 110 }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    top: '44px',
+                    right: 0,
+                    width: '220px',
+                    backgroundColor: colors.white,
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(30,51,54,0.12)',
+                    border: `1px solid ${colors.border}`,
+                    padding: '14px',
+                    zIndex: 111,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                  }}>
+                    {/* User info */}
+                    <div style={{ padding: '4px 6px 10px', borderBottom: `1px solid ${colors.border}` }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: colors.textDark }}>
+                        {user?.name || 'Sushmita Das'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: colors.textMuted, marginTop: '2px', wordBreak: 'break-all' }}>
+                        {user?.email || 'user@gmail.com'}
+                      </div>
+                    </div>
+
+                    {/* Settings Button */}
+                    <button
+                      onClick={() => { navigate('/settings'); setIsProfileMenuOpen(false); }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px 6px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        outline: 'none',
+                        fontFamily: "'Montserrat', sans-serif",
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: colors.textPrimary,
+                        transition: 'background 0.15s ease',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = colors.bgLight}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                      </svg>
+                      Settings
+                    </button>
+
+                    {/* Sign out Button */}
+                    <button
+                      onClick={() => { handleSignOut(); setIsProfileMenuOpen(false); }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px 6px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        outline: 'none',
+                        fontFamily: "'Montserrat', sans-serif",
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: colors.red,
+                        transition: 'background 0.15s ease',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(163,45,45,0.06)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                      </svg>
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
+
           </div>
         </header>
 
-        {}
+        {/* ── PAGE CONTENT WRAPPER ──────────────────────────── */}
         <main style={{
           flex: 1,
-          backgroundColor: '#ffffff',
+          backgroundColor: colors.background,
           width: '100%',
+          transition: 'all 0.2s ease',
         }}>
           {children}
         </main>

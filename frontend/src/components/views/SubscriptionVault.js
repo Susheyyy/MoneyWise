@@ -243,7 +243,7 @@ const SubscriptionVault = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', position: 'relative', overflow: 'visible' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', position: 'relative', overflow: 'visible', padding: '32px 40px', boxSizing: 'border-box' }}>
       
       {deleteTargetId && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30, 51, 54, 0.4)', backdropFilter: 'blur(4px)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.15s ease' }}>

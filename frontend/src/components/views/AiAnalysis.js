@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import axios from 'axios';
+import { useTheme } from '../../context/ThemeContext';
 
 const AiAnalysis = () => {
+  const { theme, colors } = useTheme();
   const barChartRef = useRef(null);
   const lineChartRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -15,13 +17,13 @@ const AiAnalysis = () => {
   });
 
   const uiColors = {
-    tealDark: '#1E3336',
-    border: '#E0E8E8',
-    white: '#ffffff',
-    accentGreen: '#1D9E75',
-    textMuted: '#9BB5B8',
-    redText: '#A32D2D',
-    bgLight: '#FAFCFC'
+    tealDark: colors.textDark,
+    border: colors.border,
+    white: colors.white,
+    accentGreen: colors.green,
+    textMuted: colors.textMuted,
+    redText: colors.red,
+    bgLight: colors.bgLight
   };
 
   useEffect(() => {
@@ -90,7 +92,7 @@ const AiAnalysis = () => {
   }
 
   return (
-    <div style={{ background: uiColors.white, padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: '32px', overflowY: 'auto', flex: 1 }}>
+    <div style={{ background: colors.background, padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: '32px', overflowY: 'auto', flex: 1, minHeight: '100%' }}>
       
       <div>
         <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', letterSpacing: '0.8px', borderLeft: '3px solid #1D9E75', paddingLeft: '12px', marginBottom: '4px' }}>AI Predictive Engine</h3>
