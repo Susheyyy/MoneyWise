@@ -29,7 +29,7 @@ const SavingsGoals = () => {
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [monthlySavings, setMonthlySavings] = useState('');
-  const [startDate, setStartDate] = useState('2026-06-10');
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [targetDate, setTargetDate] = useState('');
   const [category, setCategory] = useState('Tech & gadgets');
   const [notes, setNotes] = useState('');
@@ -85,7 +85,7 @@ const handleCreateGoal = async (e) => {
       await createGoal({
         name: goalName,
         targetAmount: Number(targetAmount),
-        monthlySavings: Number(monthlySavings), 
+        monthlySavings: Number(monthlySavings),
         category,
         startDate,
         targetDate: targetDate || undefined,
@@ -112,6 +112,7 @@ const handleCreateGoal = async (e) => {
         goalId: selectedGoal._id,
         amount: Number(contributionAmount),
         walletId: selectedWalletId,
+        walletName: targetWallet?.name || 'Manual',
         note: contributionNote
       }).unwrap();
 

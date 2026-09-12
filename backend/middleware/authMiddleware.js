@@ -13,7 +13,7 @@ const protect = async (req, res, next) => {
   }
 
   if (!token || token === 'none') {
-    return res.status(401).json({ message: 'Authorization rejected: Missing access credential credentials' });
+    return res.status(401).json({ message: 'Authorization rejected: Missing access credentials' });
   }
 
   try {

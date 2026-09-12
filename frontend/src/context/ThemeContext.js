@@ -62,7 +62,7 @@ export const ThemeProvider = ({ children }) => {
         dangerBg:    'rgba(239, 68, 68, 0.12)',
         warningBg:   'rgba(245, 158, 11, 0.12)',
 
-        // Legacy aliases (keep for backward compat)
+
         redText:     '#EF4444',
         redBg:       'rgba(239, 68, 68, 0.12)',
         greenText:   '#22C55E',

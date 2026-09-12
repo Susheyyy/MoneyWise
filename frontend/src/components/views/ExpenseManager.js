@@ -2,16 +2,22 @@ import React, { useState } from 'react';
 import {
   useGetTransactionsQuery,
   useAddTransactionMutation,
+  useUpdateTransactionMutation,
   useDeleteTransactionMutation
 } from '../../features/transactions/transactionApi';
+import { useGetWalletsQuery } from '../../features/wallets/walletApi';
+import { useGetCategoriesQuery } from '../../features/categories/categoryApi';
 import { useTheme } from '../../context/ThemeContext';
 import { getErrorMessage } from '../../utils/errorHandler';
 
 const ExpenseManager = () => {
 
   const { data: expensesData = [], refetch } = useGetTransactionsQuery();
-  const [addTransaction] = useAddTransactionMutation(); 
+  const [addTransaction] = useAddTransactionMutation();
+  const [updateTransaction] = useUpdateTransactionMutation();
   const [deleteTransaction] = useDeleteTransactionMutation();
+  const { data: dbWallets = [] } = useGetWalletsQuery();
+  const { data: dbCategories = [] } = useGetCategoriesQuery();
 
   const { colors, fontSizeMultiplier } = useTheme();
 
@@ -23,13 +29,15 @@ const ExpenseManager = () => {
   const [selectedTxn, setSelectedTxn] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [txnType, setTxnType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Shopping');
+  const [categoryId, setCategoryId] = useState('');
+  const [walletId, setWalletId] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [paymentMode, setPaymentMode] = useState('GPay');
+  const [paymentMode, setPaymentMode] = useState('UPI');
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState([]);
   const [isShared, setIsShared] = useState(false);
@@ -37,18 +45,8 @@ const ExpenseManager = () => {
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  const categories = [
-    { name: 'Shopping', icon: 'ti-shopping-bag', color: '#854F0B', bg: '#FAEEDA' },
-    { name: 'Food', icon: 'ti-motorbike', color: '#854F0B', bg: '#FAEEDA' },
-    { name: 'Transport', icon: 'ti-car', color: '#185FA5', bg: '#E6F1FB' },
-    { name: 'Hostel', icon: 'ti-school', color: '#534AB7', bg: '#EEEDFE' },
-    { name: 'Subscriptions', icon: 'ti-device-tv', color: colors.red, bg: `${colors.red}1A` },
-    { name: 'Health', icon: 'ti-heart', color: colors.red, bg: `${colors.red}1A` },
-    { name: 'Education', icon: 'ti-book', color: colors.green, bg: `${colors.green}1A` },
-    { name: 'Other', icon: 'ti-dots', color: colors.textMuted, bg: colors.bgLight }
-  ];
-
-  const paymentModes = ['GPay', 'Card', 'Cash', 'Bank', 'UPI'];
+  // Valid payment modes matching the backend Transaction schema enum
+  const paymentModes = ['UPI', 'Cash', 'Card', 'NetBanking'];
   const preDefinedTags = ['food', 'hostel', 'shared', 'recurring', 'college', 'online'];
 
   const autoRules = {
@@ -91,37 +89,84 @@ const ExpenseManager = () => {
     }
   };
 
+  const resetForm = () => {
+    setAmount('');
+    setDescription('');
+    setCategoryId(dbCategories[0]?._id || '');
+    setWalletId(dbWallets[0]?._id || '');
+    setAutoCatSuggestion('');
+    setNotes('');
+    setTags([]);
+    setIsShared(false);
+    setPaymentMode('UPI');
+    setTxnType('expense');
+    setDate(new Date().toISOString().split('T')[0]);
+    setIsEditMode(false);
+  };
+
+  const openEditDrawer = (txn) => {
+    setIsEditMode(true);
+    setTxnType(txn.type);
+    setAmount(txn.amount.toString());
+    setDescription(txn.description || '');
+    setCategoryId(txn.category?._id || '');
+    setWalletId(txn.wallet?._id || '');
+    setPaymentMode(txn.paymentMode || 'UPI');
+    setNotes(txn.notes || '');
+    setTags(txn.tags || []);
+    setIsShared(txn.isSharedExpense || false);
+    setDate(txn.date ? new Date(txn.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+    setIsDrawerOpen(true);
+  };
+
   const handleSaveTransaction = async (e) => {
     e.preventDefault();
     if (!amount || !description.trim()) {
-      showNotification('Please fill in required descriptor fields.', 'error');
+      showNotification('Please fill in required fields.', 'error');
+      return;
+    }
+    if (!walletId) {
+      showNotification('Please select a wallet.', 'error');
       return;
     }
 
     try {
-      await addTransaction({
-        amount: Number(amount),
-        description: description.trim(),
-        type: txnType,
-        category,
-        date,
-        paymentMode,
-        notes: notes.trim(),
-        tags,
-        isSharedExpense: isShared
-      }).unwrap();
+      if (isEditMode && selectedTxn) {
+        await updateTransaction({
+          id: selectedTxn._id,
+          amount: Number(amount),
+          description: description.trim(),
+          type: txnType,
+          category: categoryId,
+          wallet: walletId,
+          date,
+          paymentMode,
+          notes: notes.trim(),
+          tags,
+          isSharedExpense: isShared
+        }).unwrap();
+        showNotification('Transaction updated successfully.', 'success');
+      } else {
+        await addTransaction({
+          amount: Number(amount),
+          description: description.trim(),
+          type: txnType,
+          category: categoryId,
+          wallet: walletId,
+          date,
+          paymentMode,
+          notes: notes.trim(),
+          tags,
+          isSharedExpense: isShared
+        }).unwrap();
+        showNotification('Transaction added successfully.', 'success');
+      }
 
-      showNotification('Transaction cataloged successfully.', 'success');
       setIsDrawerOpen(false);
-      setAmount('');
-      setDescription('');
-      setAutoCatSuggestion('');
-      setNotes('');
-      setTags([]);
-      setIsShared(false);
+      resetForm();
       refetch();
     } catch (err) {
-      showNotification(getErrorMessage(err, 'Error executing ledger post request.'), 'error');
+      showNotification(getErrorMessage(err, 'Error saving transaction.'), 'error');
     }
   };
 
@@ -144,7 +189,7 @@ const ExpenseManager = () => {
   const filteredTransactions = expensesData.filter(t => {
     if (activeTab === 'expense' && t.type !== 'expense') return false;
     if (activeTab === 'income' && t.type !== 'income') return false;
-    
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchDesc = t.description?.toLowerCase().includes(query);
@@ -152,8 +197,10 @@ const ExpenseManager = () => {
       if (!matchDesc && !matchNotes) return false;
     }
 
-    if (selectedCategoryFilter && t.category !== selectedCategoryFilter) return false;
-    if (selectedWalletFilter && t.paymentMode !== selectedWalletFilter) return false;
+    // category is a populated object { _id, name } — compare by _id
+    if (selectedCategoryFilter && t.category?._id !== selectedCategoryFilter) return false;
+    // wallet is a populated object — compare by _id
+    if (selectedWalletFilter && t.wallet?._id !== selectedWalletFilter) return false;
 
     return true;
   });
@@ -222,12 +269,12 @@ const ExpenseManager = () => {
 
             <select value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, border: `1px solid ${selectedCategoryFilter ? colors.tealPrimary : colors.border}`, background: selectedCategoryFilter ? `${colors.tealPrimary}1A` : colors.white, color: selectedCategoryFilter ? colors.tealDark : colors.textPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
               <option value="">Category (All)</option>
-              {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              {dbCategories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
             </select>
 
             <select value={selectedWalletFilter} onChange={(e) => setSelectedWalletFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, border: `1px solid ${selectedWalletFilter ? colors.tealPrimary : colors.border}`, background: selectedWalletFilter ? `${colors.tealPrimary}1A` : colors.white, color: selectedWalletFilter ? colors.tealDark : colors.textPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
               <option value="">Wallet (All)</option>
-              {paymentModes.map(mode => <option key={mode} value={mode}>{mode}</option>)}
+              {dbWallets.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
             </select>
 
             <div style={{ marginLeft: 'auto', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, whiteSpace: 'nowrap', fontWeight: 500 }}>
@@ -254,17 +301,16 @@ const ExpenseManager = () => {
                       <td colSpan="6" style={{ padding: '60px', textAlign: 'center', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textMuted }}>No ledger transaction lines matched current viewport scopes.</td>
                     </tr>
                   ) : filteredTransactions.map((txn) => {
-                    const isExpense = txn.type === 'expense';
-                    const matchIcon = categories.find(c => c.name === txn.category) || categories[7];
+          const isExpense = txn.type === 'expense';
 
                     return (
                       <tr key={txn._id} onClick={() => { setSelectedTxn(txn); setIsPanelOpen(true); }} style={{ borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', background: selectedTxn?._id === txn._id ? `${colors.tealPrimary}0D` : 'transparent', transition: 'background 0.15s ease' }}>
                         <td style={{ padding: '16px 20px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${12 * fontSizeMultiplier}px`, background: matchIcon.bg, color: matchIcon.color, fontWeight: 700 }}>
-                              {txn.category?.substring(0, 2).toUpperCase()}
-                            </div>
-                            <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>{txn.category}</div>
+                            <div style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${12 * fontSizeMultiplier}px`, background: colors.bgLight, color: colors.textMuted, fontWeight: 700 }}>
+                            {txn.category?.name?.substring(0, 2).toUpperCase() || '??'}
+                          </div>
+                          <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>{txn.category?.name || 'Uncategorized'}</div>
                           </div>
                         </td>
 
@@ -326,11 +372,11 @@ const ExpenseManager = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${colors.border}`, fontSize: `${13 * fontSizeMultiplier}px` }}>
                     <span style={{ color: colors.textMuted, fontWeight: 500 }}>Category Node</span>
-                    <span style={{ fontWeight: 600, color: colors.textDark }}>{selectedTxn.category}</span>
+                    <span style={{ fontWeight: 600, color: colors.textDark }}>{selectedTxn.category?.name || 'Uncategorized'}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${colors.border}`, fontSize: `${13 * fontSizeMultiplier}px` }}>
                     <span style={{ color: colors.textMuted, fontWeight: 500 }}>Wallet Channel</span>
-                    <span style={{ fontWeight: 600, color: colors.textDark }}>{selectedTxn.paymentMode}</span>
+                    <span style={{ fontWeight: 600, color: colors.textDark }}>{selectedTxn.wallet?.name || 'Unknown Wallet'} ({selectedTxn.paymentMode})</span>
                   </div>
                   {selectedTxn.notes && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 0', fontSize: `${13 * fontSizeMultiplier}px` }}>
@@ -340,9 +386,12 @@ const ExpenseManager = () => {
                   )}
                 </div>
 
-                <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
-                  <button onClick={() => handleDeleteStub(selectedTxn._id)} style={{ width: '100%', padding: '14px', background: `${colors.red}1A`, color: colors.red, border: `1px solid ${colors.red}4D`, borderRadius: '12px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '1px', transition: 'all 0.2s' }} onMouseOver={e=>e.target.style.background=`${colors.red}33`} onMouseOut={e=>e.target.style.background=`${colors.red}1A`}>
-                    Wipe Record Entry
+                <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '20px' }}>
+                   <button onClick={() => openEditDrawer(selectedTxn)} style={{ flex: 1, padding: '12px', background: `${colors.tealPrimary}1A`, color: colors.tealPrimary, border: `1px solid ${colors.tealPrimary}4D`, borderRadius: '12px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                    Edit
+                  </button>
+                  <button onClick={() => handleDeleteStub(selectedTxn._id)} style={{ flex: 1, padding: '12px', background: `${colors.red}1A`, color: colors.red, border: `1px solid ${colors.red}4D`, borderRadius: '12px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                    Delete
                   </button>
                 </div>
               </div>
@@ -387,11 +436,11 @@ const ExpenseManager = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Category configuration</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                  {categories.map(c => (
-                    <div key={c.name} onClick={() => setCategory(c.name)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 4px', borderRadius: '10px', border: `1px solid ${category === c.name ? colors.tealPrimary : colors.border}`, background: category === c.name ? `${colors.tealPrimary}1A` : colors.white, cursor: 'pointer', boxSizing: 'border-box', transition: 'all 0.2s' }}>
-                      <span style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, color: category === c.name ? colors.tealDark : colors.textPrimary }}>{c.name}</span>
+                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Category</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {dbCategories.map(c => (
+                    <div key={c._id} onClick={() => setCategoryId(c._id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 4px', borderRadius: '10px', border: `1px solid ${categoryId === c._id ? colors.tealPrimary : colors.border}`, background: categoryId === c._id ? `${colors.tealPrimary}1A` : colors.white, cursor: 'pointer', boxSizing: 'border-box', transition: 'all 0.2s' }}>
+                      <span style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, color: categoryId === c._id ? colors.tealDark : colors.textPrimary }}>{c.name}</span>
                     </div>
                   ))}
                 </div>
@@ -409,7 +458,16 @@ const ExpenseManager = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Wallet channel allocation</label>
+                <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Wallet</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {dbWallets.map(w => (
+                    <div key={w._id} onClick={() => setWalletId(w._id)} style={{ padding: '8px 14px', borderRadius: '8px', border: `1px solid ${walletId === w._id ? colors.tealPrimary : colors.border}`, background: walletId === w._id ? `${colors.tealPrimary}1A` : colors.white, color: walletId === w._id ? colors.tealDark : colors.textPrimary, fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
+                      {w.name} <span style={{ fontSize: '10px', color: colors.textMuted }}>₹{w.balance?.toLocaleString('en-IN')}</span>
+                    </div>
+                  ))}
+                </div>
+
+              <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px', marginTop: '16px' }}>Payment Mode</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {paymentModes.map(mode => (
                     <div key={mode} onClick={() => setPaymentMode(mode)} style={{ padding: '8px 14px', borderRadius: '8px', border: `1px solid ${paymentMode === mode ? colors.tealPrimary : colors.border}`, background: paymentMode === mode ? `${colors.tealPrimary}1A` : colors.white, color: paymentMode === mode ? colors.tealDark : colors.textPrimary, fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -439,8 +497,8 @@ const ExpenseManager = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '20px', paddingBottom: '24px' }}>
-                <button type="button" onClick={() => setIsDrawerOpen(false)} style={{ padding: '14px 20px', background: colors.bgLight, color: colors.textPrimary, border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, padding: '14px', background: colors.tealPrimary, color: '#fff', border: 'none', borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition: 'all 0.2s' }}>Save transaction</button>
+                <button type="button" onClick={() => { setIsDrawerOpen(false); resetForm(); }} style={{ padding: '14px 20px', background: colors.bgLight, color: colors.textPrimary, border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Cancel</button>
+                <button type="submit" style={{ flex: 1, padding: '14px', background: colors.tealPrimary, color: '#fff', border: 'none', borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition: 'all 0.2s' }}>{isEditMode ? 'Update Transaction' : 'Save Transaction'}</button>
               </div>
             </form>
           </div>
@@ -457,7 +515,19 @@ const ExpenseManager = () => {
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, marginBottom: '8px', fontWeight: 500 }}>Compile current ledger cycle file blocks</div>
               
-              <div onClick={() => { showNotification('CSV sheets generated successfully.', 'success'); setIsExportModalOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${colors.border}`, borderRadius: '12px', cursor: 'pointer', background: colors.bgLight, transition: 'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.borderColor=colors.tealPrimary} onMouseOut={e=>e.currentTarget.style.borderColor=colors.border}>
+              <div onClick={async () => {
+                try {
+                  const response = await fetch('/api/export/csv', { credentials: 'include' });
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'transactions.csv';
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  setIsExportModalOpen(false);
+                } catch { showNotification('Export failed. Try again.', 'error'); }
+              }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${colors.border}`, borderRadius: '12px', cursor: 'pointer', background: colors.bgLight, transition: 'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.borderColor=colors.tealPrimary} onMouseOut={e=>e.currentTarget.style.borderColor=colors.border}>
                 <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>Comma Separated Spreadsheet (.csv)</div>
               </div>
               <div onClick={() => { showNotification('Excel report workbook compiled.', 'success'); setIsExportModalOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${colors.border}`, borderRadius: '12px', cursor: 'pointer', background: colors.bgLight, transition: 'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.borderColor=colors.tealPrimary} onMouseOut={e=>e.currentTarget.style.borderColor=colors.border}>

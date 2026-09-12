@@ -13,7 +13,7 @@ const sendInviteEmail = async (email, groupName, inviteToken) => {
       }
     });
 
-    const joinLink = `http://localhost:3000/join-group/${inviteToken}`;
+    const joinLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/join-group/${inviteToken}`;
 
     const mailOptions = {
       from: '"MoneyWise Splitter" <' + process.env.EMAIL_USER + '>',
@@ -66,10 +66,11 @@ exports.createGroup = async (req, res) => {
       pendingInvites,
       inviteToken,
       expenses: [],
-      activityLog: [{ text: req.user.name + ' created this group.' }]
+      activityLog: [{ text: (req.user.name || 'Someone') + ' created this group.' }]
     });
 
-    cleanEmails.forEach(email => {
+    // Only send invite emails to addresses not already registered
+    pendingInvites.forEach(email => {
       sendInviteEmail(email, name.trim(), inviteToken);
     });
 
@@ -129,7 +130,7 @@ exports.addSharedExpense = async (req, res) => {
     });
 
     if (!group.activityLog) group.activityLog = [];
-    group.activityLog.push({ text: req.user.name + ' added "' + description.trim() + '" for ₹' + totalAmount });
+    group.activityLog.push({ text: (req.user.name || 'Someone') + ' added "' + description.trim() + '" for ₹' + totalAmount });
     
     await group.save();
     res.status(200).json(group);
@@ -156,16 +157,21 @@ exports.addMembersAfterFact = async (req, res) => {
     existingUsers.forEach(user => {
       if (!group.members.some(mId => mId.toString() === user._id.toString())) {
         group.members.push(user._id);
-        group.activityLog.push({ text: req.user.name + ' added ' + user.name });
+        group.activityLog.push({ text: (req.user.name || 'Someone') + ' added ' + user.name });
       }
     });
 
+    // Only process emails not already registered
     cleanEmails.forEach(email => {
       if (!group.pendingInvites.includes(email)) {
+        const isExistingUser = existingUsers.some(u => u.email.toLowerCase() === email);
         group.pendingInvites.push(email);
-        group.activityLog.push({ text: req.user.name + ' invited ' + email });
+        group.activityLog.push({ text: (req.user.name || 'Someone') + ' invited ' + email });
+        if (!isExistingUser) {
+          sendInviteEmail(email, group.name, group.inviteToken);
+        }
       }
-      sendInviteEmail(email, group.name, group.inviteToken);
+
     });
 
     await group.save();
@@ -191,7 +197,7 @@ exports.editGroupMetadata = async (req, res) => {
       group.activityLog = [];
     }
     
-    group.activityLog.push({ text: req.user.name + ' changed name from ' + oldName + ' to ' + group.name });
+    group.activityLog.push({ text: (req.user.name || 'Someone') + ' changed name from ' + oldName + ' to ' + group.name });
     
     await group.save();
     res.status(200).json(group);
@@ -203,7 +209,7 @@ exports.editGroupMetadata = async (req, res) => {
 exports.removeGroupMatrix = async (req, res) => {
   try {
     const group = await Group.findOneAndDelete({ _id: req.params.id, members: req.user.id });
-    if (!group) return res.status(404).json({ message: 'Group workspace wiped successfully or unauthorized.' });
+    if (!group) return res.status(404).json({ message: 'Group not found or you are not authorized.' });
     res.status(200).json({ message: 'Group workspace wiped successfully.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -212,7 +218,8 @@ exports.removeGroupMatrix = async (req, res) => {
 
 exports.getSettlementSummary = async (req, res) => {
   try {
-    const group = await Group.findById(req.params.id).populate('members', 'name email');
+    // Verify the requesting user is actually a member of this group
+    const group = await Group.findOne({ _id: req.params.id, members: req.user.id }).populate('members', 'name email');
     if (!group) return res.status(404).json({ message: 'Group workspace matrix container not found.' });
 
     const balances = {};
@@ -296,7 +303,7 @@ exports.joinGroupViaLink = async (req, res) => {
     if (!group.members.some(id => id.toString() === userId.toString())) {
       group.members.push(userId);
       if (!group.activityLog) group.activityLog = [];
-      group.activityLog.push({ text: req.user.name + ' joined via link.' });
+      group.activityLog.push({ text: (req.user.name || 'Someone') + ' joined via link.' });
       await group.save();
     }
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { logout } from '../features/auth/authSlice';
+import { logout, updateUser } from '../features/auth/authSlice';
+import { useUpdateProfileMutation } from '../features/auth/authApi';
 import { useTheme } from '../context/ThemeContext';
 
 const NAV_ITEMS = [
@@ -99,8 +100,33 @@ const Layout = ({ children }) => {
 
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [targetReminderDay] = useState(10);
   const [hasLoggedMonthlySavings, setHasLoggedMonthlySavings] = useState(false);
+
+  const [updateProfile] = useUpdateProfileMutation();
+
+  const targetReminderDay = user?.monthlyLogPreference === 'end' 
+    ? 25 
+    : user?.monthlyLogPreference === 'custom' 
+      ? user?.monthlyLogCustomDate || 1 
+      : 1;
+
+  const currentMonthYear = new Date().toISOString().slice(0, 7);
+
+  const isReminderDayActive = () => {
+    if (user?.monthlyLogLastDismissed === currentMonthYear) return false;
+    return new Date().getDate() >= targetReminderDay;
+  };
+
+  const handleDismissMonthlyLog = async () => {
+    setHasLoggedMonthlySavings(true);
+    setIsNotificationOpen(false);
+    try {
+      const res = await updateProfile({ monthlyLogLastDismissed: currentMonthYear }).unwrap();
+      dispatch(updateUser({ monthlyLogLastDismissed: currentMonthYear }));
+    } catch (e) {
+      console.error('Failed to dismiss monthly log', e);
+    }
+  };
 
   const getInitials = (name) => {
     if (!name) return 'ME';
@@ -110,10 +136,6 @@ const Layout = ({ children }) => {
   const getActivePeriodString = () => {
     const now = new Date();
     return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  };
-
-  const isReminderDayActive = () => {
-    return new Date().getDate() >= targetReminderDay;
   };
 
   const currentPath = location.pathname;
@@ -356,7 +378,7 @@ const Layout = ({ children }) => {
                         Have you allocated funds toward your active savings goals for this month?
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => { setHasLoggedMonthlySavings(true); setIsNotificationOpen(false); }}
+                        <button onClick={handleDismissMonthlyLog}
                           style={{ background: colors.green, color: '#fff', border: 'none', padding: '7px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>
                           Yes, done
                         </button>

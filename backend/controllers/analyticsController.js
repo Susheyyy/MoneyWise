@@ -1,5 +1,4 @@
-const { spawn } = require('child_process');
-const path = require('path');
+
 const Transaction = require('../models/Transaction'); 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const aiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -7,7 +6,7 @@ const aiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 exports.generateIntelligenceMetrics = async (req, res) => {
   try {
     const transactions = await Transaction.find({ user: req.user.id }).lean();
-    const flaskResponse = await fetch('http://127.0.0.1:5001/api/intelligence/analyze', {
+    const flaskResponse = await fetch(`${process.env.FLASK_URL || 'http://127.0.0.1:5001'}/api/intelligence/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(transactions)

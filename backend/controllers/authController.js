@@ -24,7 +24,10 @@ const sendTokenCookie = (user, statusCode, res, message, extraData = {}) => {
       user: {
         _id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        monthlyLogPreference: user.monthlyLogPreference,
+        monthlyLogCustomDate: user.monthlyLogCustomDate,
+        monthlyLogLastDismissed: user.monthlyLogLastDismissed
       },
       ...extraData
     });
@@ -168,7 +171,8 @@ exports.resetPassword = async (req, res) => {
 
     if (!user) return res.status(400).json({ message: 'Invalid token or recovery window expired.' });
 
-    user.password = newPassword; 
+    user.password = newPassword;
+    user.verificationCode = null;
     user.verificationCodeExpires = null;
     await user.save();
 

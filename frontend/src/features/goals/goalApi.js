@@ -4,7 +4,7 @@ import { baseQueryWithAuth } from '../../api/baseQuery';
 export const goalApi = createApi({
   reducerPath: 'goalApi',
   baseQuery: baseQueryWithAuth,
-  tagTypes: ['Goal', 'Summary'], 
+  tagTypes: ['Goal', 'Summary', 'Wallet'],
   endpoints: (builder) => ({
     getGoals: builder.query({
       query: () => '/api/goals',
@@ -18,13 +18,22 @@ export const goalApi = createApi({
       }),
       invalidatesTags: ['Goal'],
     }),
+    updateGoal: builder.mutation({
+      query: ({ goalId, ...payload }) => ({
+        url: `/api/goals/${goalId}`,
+        method: 'PUT',
+        body: payload,
+      }),
+      invalidatesTags: ['Goal'],
+    }),
     addContribution: builder.mutation({
       query: ({ goalId, ...payload }) => ({
         url: `/api/goals/${goalId}/contribution`,
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: ['Goal', 'Summary'], 
+      // Invalidate wallets too so balance refreshes after deduction
+      invalidatesTags: ['Goal', 'Summary', 'Wallet'],
     }),
     deleteGoal: builder.mutation({
       query: (goalId) => ({
@@ -39,6 +48,7 @@ export const goalApi = createApi({
 export const {
   useGetGoalsQuery,
   useCreateGoalMutation,
+  useUpdateGoalMutation,
   useAddContributionMutation,
   useDeleteGoalMutation
-} = goalApi;
+} = goalApi;

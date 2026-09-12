@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useGetCategoriesQuery, useUpdateCategoryBudgetMutation } from '../../features/categories/categoryApi';
+import { useUpdateProfileMutation, useLogoutMutation } from '../../features/auth/authApi';
+import { updateUser, logout as logoutAction } from '../../features/auth/authSlice';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { useTheme } from '../../context/ThemeContext';
 
 const ProfileSettings = ({ onBackToDashboard }) => {
   
   const currentUser = useSelector((state) => state.auth.user);
-
+  const dispatch = useDispatch();
+  const [updateProfileApi] = useUpdateProfileMutation();
+  const [logoutApi] = useLogoutMutation();
   
   const { data: dbCategories = [], isLoading: catsLoading } = useGetCategoriesQuery();
   const [updateCategoryBudget] = useUpdateCategoryBudgetMutation();
@@ -30,6 +34,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     goalMilestones: true,
     compactTable: false,
     hideBalance: false,
+    monthlyLogPreference: currentUser?.monthlyLogPreference || 'start',
+    monthlyLogCustomDate: currentUser?.monthlyLogCustomDate || 1,
     budgets: { food: '5000', shopping: '4000', transport: '2000', hostel: '3500', entertainment: '1500', education: '2000', health: '1200' }
   });
 
@@ -50,6 +56,9 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   const [compactTable, setCompactTable] = useState(savedData.compactTable);
   const [hideBalance, setHideBalance] = useState(savedData.hideBalance);
   
+  const [monthlyLogPreference, setMonthlyLogPreference] = useState(savedData.monthlyLogPreference);
+  const [monthlyLogCustomDate, setMonthlyLogCustomDate] = useState(savedData.monthlyLogCustomDate);
+
   const [liveBudgets, setLiveBudgets] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [hasChanges, setHasChanges] = useState(false);
@@ -88,12 +97,15 @@ const ProfileSettings = ({ onBackToDashboard }) => {
       goalMilestones !== savedData.goalMilestones ||
       compactTable !== savedData.compactTable ||
       hideBalance !== savedData.hideBalance ||
+      monthlyLogPreference !== savedData.monthlyLogPreference ||
+      monthlyLogCustomDate !== savedData.monthlyLogCustomDate ||
       budgetModified;
     
     setHasChanges(isChanged);
   }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, compactTable, hideBalance, liveBudgets, savedData, dbCategories]);
 
   const uiColors = {
+    ...colors,
     tealPrimary: colors.tealPrimary,
     tealDark: colors.textDark,
     border: colors.border,
@@ -126,8 +138,14 @@ const ProfileSettings = ({ onBackToDashboard }) => {
       const updatedMaster = {
         firstName, lastName, email, phone, institution, city, bio,
         budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones,
-        compactTable, hideBalance, budgets: { ...liveBudgets }
+        compactTable, hideBalance, monthlyLogPreference, monthlyLogCustomDate, budgets: { ...liveBudgets }
       };
+
+      if (monthlyLogPreference !== currentUser?.monthlyLogPreference || monthlyLogCustomDate !== currentUser?.monthlyLogCustomDate) {
+        const profileData = await updateProfileApi({ monthlyLogPreference, monthlyLogCustomDate }).unwrap();
+        dispatch(updateUser(profileData));
+      }
+
       setSavedData(updatedMaster);
       setHasChanges(false);
       showNotification('Changes saved successfully.', 'success');
@@ -151,6 +169,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     setGoalMilestones(savedData.goalMilestones);
     setCompactTable(savedData.compactTable);
     setHideBalance(savedData.hideBalance);
+    setMonthlyLogPreference(savedData.monthlyLogPreference);
+    setMonthlyLogCustomDate(savedData.monthlyLogCustomDate);
     
     const budgetMap = {};
     dbCategories.forEach(cat => {
@@ -213,25 +233,25 @@ const ProfileSettings = ({ onBackToDashboard }) => {
       <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr) 340px', background: uiColors.bgMain }}>
         <aside style={{ background: uiColors.white, borderRight: `1px solid ${uiColors.border}`, padding: '8px 0 24px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '16px 24px 8px 24px' }}>Account</div>
-          <div onClick={() => setActiveMenu('Profile')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Profile' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Profile' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Profile' ? '#F0FAF6' : 'transparent' }}>Profile Details</div>
-          <div onClick={() => setActiveMenu('Plan')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Plan' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Plan' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Plan' ? '#F0FAF6' : 'transparent' }}>Plan</div>
-          <div onClick={() => setActiveMenu('Security')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Security' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Security' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Security' ? '#F0FAF6' : 'transparent' }}>Security</div>
-          <div onClick={() => setActiveMenu('Notifications')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Notifications' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Notifications' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Notifications' ? '#F0FAF6' : 'transparent' }}>Notifications</div>
+          <div onClick={() => setActiveMenu('Profile')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Profile' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Profile' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Profile' ? uiColors.successBg : 'transparent' }}>Profile Details</div>
+          <div onClick={() => setActiveMenu('Plan')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Plan' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Plan' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Plan' ? uiColors.successBg : 'transparent' }}>Plan</div>
+          <div onClick={() => setActiveMenu('Security')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Security' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Security' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Security' ? uiColors.successBg : 'transparent' }}>Security</div>
+          <div onClick={() => setActiveMenu('Notifications')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Notifications' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Notifications' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Notifications' ? uiColors.successBg : 'transparent' }}>Notifications</div>
           
           <div style={{ height: '1px', background: uiColors.border, margin: '12px 24px' }}></div>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '4px 24px 8px 24px' }}>Finance</div>
-          <div onClick={() => setActiveMenu('Wallets')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Wallets' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Wallets' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Wallets' ? '#F0FAF6' : 'transparent' }}>Wallets</div>
-          <div onClick={() => setActiveMenu('Budgets')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Budgets' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Budgets' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Budgets' ? '#F0FAF6' : 'transparent' }}>Budgets</div>
-          <div onClick={() => setActiveMenu('Categories')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Categories' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Categories' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Categories' ? '#F0FAF6' : 'transparent' }}>Categories</div>
+          <div onClick={() => setActiveMenu('Wallets')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Wallets' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Wallets' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Wallets' ? uiColors.successBg : 'transparent' }}>Wallets</div>
+          <div onClick={() => setActiveMenu('Budgets')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Budgets' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Budgets' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Budgets' ? uiColors.successBg : 'transparent' }}>Budgets</div>
+          <div onClick={() => setActiveMenu('Categories')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Categories' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Categories' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Categories' ? uiColors.successBg : 'transparent' }}>Categories</div>
           
           <div style={{ height: '1px', background: uiColors.border, margin: '12px 24px' }}></div>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '4px 24px 8px 24px' }}>Application</div>
-          <div onClick={() => setActiveMenu('Appearance')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Appearance' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Appearance' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Appearance' ? '#F0FAF6' : 'transparent' }}>Appearance</div>
-          <div onClick={() => setActiveMenu('Export')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Export' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Export' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Export' ? '#F0FAF6' : 'transparent' }}>Export Data</div>
+          <div onClick={() => setActiveMenu('Appearance')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Appearance' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Appearance' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Appearance' ? uiColors.successBg : 'transparent' }}>Appearance</div>
+          <div onClick={() => setActiveMenu('Export')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Export' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Export' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Export' ? uiColors.successBg : 'transparent' }}>Export Data</div>
           
           <div style={{ height: '1px', background: uiColors.border, margin: '12px 24px' }}></div>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '4px 24px 8px 24px' }}>Settings</div>
-          <div onClick={() => setActiveMenu('Settings')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Settings' ? '#085041' : '#6B8B8E', cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Settings' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Settings' ? '#F0FAF6' : 'transparent' }}>Settings</div>
+          <div onClick={() => setActiveMenu('Settings')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Settings' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Settings' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Settings' ? uiColors.successBg : 'transparent' }}>Settings</div>
         </aside>
 
         <main style={{ padding: '32px 48px', display: 'flex', flexDirection: 'column', gap: '32px', overflowY: 'auto' }}>
@@ -254,33 +274,33 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: uiColors.textMuted }}>First Name</span>
-                    <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: '#FAFCFC', fontFamily: 'inherit' }} />
+                    <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: uiColors.bgLight, fontFamily: 'inherit' }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: uiColors.textMuted }}>Last Name</span>
-                    <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: '#FAFCFC', fontFamily: 'inherit' }} />
+                    <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: uiColors.bgLight, fontFamily: 'inherit' }} />
                   </div>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: uiColors.textMuted }}>Email Address (Immutable)</span>
-                    <input type="email" value={email} disabled style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: '#7A8C8E', outline: 'none', background: '#F4F7F7', cursor: 'not-allowed', fontFamily: 'inherit' }} />
+                    <input type="email" value={email} disabled style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: '#7A8C8E', outline: 'none', background: uiColors.bgLight, cursor: 'not-allowed', fontFamily: 'inherit' }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: uiColors.textMuted }}>Phone Line (Immutable)</span>
-                    <input type="text" value={phone} disabled style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: '#7A8C8E', outline: 'none', background: '#F4F7F7', cursor: 'not-allowed', fontFamily: 'inherit' }} />
+                    <input type="text" value={phone} disabled style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: '#7A8C8E', outline: 'none', background: uiColors.bgLight, cursor: 'not-allowed', fontFamily: 'inherit' }} />
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: uiColors.textMuted }}>College / Institution</span>
-                    <input type="text" value={institution} onChange={(e) => setInstitution(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: '#FAFCFC', fontFamily: 'inherit' }} />
+                    <input type="text" value={institution} onChange={(e) => setInstitution(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: uiColors.bgLight, fontFamily: 'inherit' }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: uiColors.textMuted }}>City Coordinate</span>
-                    <input type="text" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: '#FAFCFC', fontFamily: 'inherit' }} />
+                    <input type="text" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: uiColors.bgLight, fontFamily: 'inherit' }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1/3' }}>
                     <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: uiColors.textMuted }}>Bio Summary</span>
-                    <input type="text" value={bio} onChange={(e) => setBio(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: '#FAFCFC', fontFamily: 'inherit' }} />
+                    <input type="text" value={bio} onChange={(e) => setBio(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: uiColors.bgLight, fontFamily: 'inherit' }} />
                   </div>
                 </div>
               </div>
@@ -296,7 +316,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                       <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Export all data</div>
                       <div style={{ fontSize: '12px', color: '#9BB5B8', marginTop: '4px' }}>Download everything as a JSON backup</div>
                     </div>
-                    <button type="button" onClick={() => showNotification('Backup archive triggered.', 'success')} style={{ padding: '8px 18px', background: '#F2F4F3', border: '1px solid #E0E8E8', borderRadius: '10px', color: '#6B8B8E', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Export</button>
+                    <button type="button" onClick={() => showNotification('Backup archive triggered.', 'success')} style={{ padding: '8px 18px', background: uiColors.bgLight, border: '1px solid #E0E8E8', borderRadius: '10px', color: '#6B8B8E', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Export</button>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0', borderBottom: '1px solid #F8ECEC' }}>
@@ -323,7 +343,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
           {activeMenu === 'Plan' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px' }}>Account Plan Tier</h3>
-              <div style={{ border: `1px solid ${uiColors.border}`, padding: '24px', borderRadius: '12px', background: '#FAFCFC', maxWidth: '400px' }}>
+              <div style={{ border: `1px solid ${uiColors.border}`, padding: '24px', borderRadius: '12px', background: uiColors.bgLight, maxWidth: '400px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <span style={{ fontSize: '15px', fontWeight: 600, color: uiColors.tealDark }}>Student Premium Tier</span>
                   <span style={{ fontSize: '10px', fontWeight: 700, padding: '4px 10px', background: '#E1F5EE', color: '#085041', borderRadius: '6px' }}>ACTIVE</span>
@@ -365,6 +385,37 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                     </div>
                   </div>
                 ))}
+
+                <div style={{ padding: '16px 0', borderBottom: `1px solid ${uiColors.border}` }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 500, color: uiColors.tealDark }}>Monthly Log Frequency</div>
+                    <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>When should we ask about allocating funds to savings goals?</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <select
+                      value={monthlyLogPreference}
+                      onChange={(e) => setMonthlyLogPreference(e.target.value)}
+                      style={{ padding: '8px 12px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '12px', color: uiColors.tealDark, outline: 'none', background: uiColors.bgLight, fontFamily: 'inherit' }}
+                    >
+                      <option value="start">Start of month (1st)</option>
+                      <option value="end">End of month (25th)</option>
+                      <option value="custom">Custom Date</option>
+                    </select>
+                    {monthlyLogPreference === 'custom' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: uiColors.textMuted }}>Day:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="28"
+                          value={monthlyLogCustomDate}
+                          onChange={(e) => setMonthlyLogCustomDate(Number(e.target.value))}
+                          style={{ width: '60px', padding: '8px 12px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '12px', color: uiColors.tealDark, outline: 'none', background: uiColors.bgLight, fontFamily: 'inherit' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -403,7 +454,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                           type="text" 
                           value={liveBudgets[cat._id] || ''} 
                           onChange={(e) => setLiveBudgets({ ...liveBudgets, [cat._id]: e.target.value.replace(/[^0-9]/g, '') })} 
-                          style={{ width: '110px', padding: '6px 12px 6px 22px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '12px', fontFamily: "'Oswald', sans-serif", fontWeight: 600, color: uiColors.tealDark, outline: 'none', textAlign: 'right', background: '#FAFCFC', boxSizing: 'border-box' }} 
+                          style={{ width: '110px', padding: '6px 12px 6px 22px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '12px', fontFamily: "'Oswald', sans-serif", fontWeight: 600, color: uiColors.tealDark, outline: 'none', textAlign: 'right', background: uiColors.bgLight, boxSizing: 'border-box' }} 
                         />
                       </div>
                     </div>
@@ -512,7 +563,21 @@ const ProfileSettings = ({ onBackToDashboard }) => {
           {activeMenu === 'Export' && (
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Export Transaction History Data</h3>
-              <button type="button" onClick={() => showNotification('Data package download initialized.', 'success')} style={{ padding: '11px 22px', background: uiColors.tealPrimary, border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Download JSON Workbook Backup</button>
+              <button type="button" onClick={async () => {
+                try {
+                  showNotification('Exporting transactions...', 'success');
+                  const response = await fetch('/api/export/csv', { credentials: 'include' });
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'transactions_export.csv';
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                } catch {
+                  showNotification('Export failed.', 'error');
+                }
+              }} style={{ padding: '11px 22px', background: uiColors.tealPrimary, border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Download JSON Workbook Backup</button>
             </div>
           )}
 
@@ -521,16 +586,22 @@ const ProfileSettings = ({ onBackToDashboard }) => {
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Settings</h3>
               <p style={{ color: uiColors.textMuted, fontSize: '12px', marginBottom: '24px' }}>Manage system security runtime access profiles or discharge credentials context locks cleanly.</p>
               
-              <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '8px', padding: '16px', display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between', background: '#FFFDFD' }}>
+              <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '8px', padding: '16px', display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between', background: uiColors.bgLight }}>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: '#A32D2D' }}>Terminate account access profile session</div>
                   <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>Clears local encrypted authorization storage vectors to sign out.</div>
                 </div>
                 <button 
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (window.confirm('Are you certain you want to sign out?')) {
-                      showNotification('Clearing authorizations keys...', 'error');
+                      showNotification('Clearing authorizations keys...', 'success');
+                      try {
+                        await logoutApi().unwrap();
+                      } catch (err) {
+                        console.error('Logout error', err);
+                      }
+                      dispatch(logoutAction());
                     }
                   }}
                   style={{ padding: '8px 16px', background: uiColors.redBg, border: '1px solid #F5BFBF', borderRadius: '6px', color: uiColors.redText, fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
@@ -548,28 +619,28 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', marginBottom: '14px' }}>Your Stats</div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              <div style={{ background: '#F2F4F3', borderRadius: '12px', padding: '14px' }}>
+              <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '14px' }}>
                 <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.6rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>18</div>
                 <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500, lineHeight: '1.3' }}>Transactions this month</div>
               </div>
-              <div style={{ background: '#F2F4F3', borderRadius: '12px', padding: '14px' }}>
+              <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '14px' }}>
                 <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.6rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>₹7.7k</div>
                 <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500, lineHeight: '1.3' }}>Saved in June</div>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              <div style={{ background: '#F2F4F3', borderRadius: '12px', padding: '14px' }}>
+              <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '14px' }}>
                 <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.6rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>6</div>
                 <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500, lineHeight: '1.3' }}>Active subscriptions</div>
               </div>
-              <div style={{ background: '#F2F4F3', borderRadius: '12px', padding: '14px' }}>
+              <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '14px' }}>
                 <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.6rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>3</div>
                 <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500, lineHeight: '1.3' }}>Goals in progress</div>
               </div>
             </div>
 
-            <div style={{ background: '#F2F4F3', borderRadius: '12px', padding: '16px', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '16px', width: '100%', boxSizing: 'border-box' }}>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>₹62,920</div>
               <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500 }}>Total tracked since joined</div>
             </div>

@@ -7,6 +7,7 @@ import {
   useEditSubscriptionMutation
 } from '../../features/subscriptions/subscriptionApi';
 import { getErrorMessage } from '../../utils/errorHandler';
+import { useTheme } from '../../context/ThemeContext';
 
 const SubscriptionRow = ({ sub, colors, mapCategoryIcons, getCategoryThemeColor, getDaysRemainingText, toggleStatus, handleInitiateEditMode, setDeleteTargetId }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -103,12 +104,16 @@ const SubscriptionVault = () => {
     name: '', amount: '', category: 'Streaming & Video', billingCycle: 'monthly', nextBillingDate: ''
   });
 
-  const colors = {
-    darkTeal: '#1E3336', border: '#E0E8E8', white: '#ffffff', bgLight: '#EEF2F2',
-    textPrimary: '#364C4F', textMuted: '#9BB5B8', textDark: '#1E3336',
-    successBg: '#E1F5EE', successText: '#0F6E56', amberBg: '#FAEEDA', 
-    amberText: '#633806', redBg: '#FCEBEB', redText: '#791F1F'
+  const { colors, theme } = useTheme();
+
+  const extendedColors = {
+    ...colors,
+    darkTeal: colors.tealDark,
+    amberBg: theme === 'Dark' ? 'rgba(245, 158, 11, 0.12)' : '#FAEEDA',
+    amberText: theme === 'Dark' ? '#F59E0B' : '#633806',
   };
+
+  const pageColors = extendedColors;
 
   const showNotification = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -128,7 +133,7 @@ const SubscriptionVault = () => {
   };
 
   if (isLoading) {
-    return <div style={{ padding: '40px', color: colors.darkTeal, fontWeight: '600' }}>Synchronizing upcoming renewals...</div>;
+    return <div style={{ padding: '40px', color: pageColors.darkTeal, fontWeight: '600' }}>Synchronizing upcoming renewals...</div>;
   }
 
   const activePlans = subscriptions.filter(s => s.isActive);
@@ -247,21 +252,21 @@ const SubscriptionVault = () => {
       
       {deleteTargetId && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30, 51, 54, 0.4)', backdropFilter: 'blur(4px)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.15s ease' }}>
-          <div style={{ background: colors.white, padding: '28px', borderRadius: '16px', border: `0.5px solid ${colors.border}`, width: '380px', maxWidth: '90%', boxShadow: '0 12px 36px rgba(30,51,54,0.18)', animation: 'scaleUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ background: pageColors.white, padding: '28px', borderRadius: '16px', border: `0.5px solid ${pageColors.border}`, width: '380px', maxWidth: '90%', boxShadow: '0 12px 36px rgba(30,51,54,0.18)', animation: 'scaleUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <h4 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.25rem', fontWeight: 500, color: colors.textDark, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delete Subscription?</h4>
-              <p style={{ color: colors.textMuted, fontSize: '0.88rem', lineHeight: '1.5', marginTop: '6px' }}>Are you sure you want to completely remove this plan from your active transaction curves? This action cannot be undone.</p>
+              <h4 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.25rem', fontWeight: 500, color: pageColors.textDark, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delete Subscription?</h4>
+              <p style={{ color: pageColors.textMuted, fontSize: '0.88rem', lineHeight: '1.5', marginTop: '6px' }}>Are you sure you want to completely remove this plan from your active transaction curves? This action cannot be undone.</p>
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
               <button 
                 onClick={() => setDeleteTargetId(null)}
-                style={{ background: colors.bgLight, color: colors.textPrimary, border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}
+                style={{ background: pageColors.bgLight, color: pageColors.textPrimary, border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}
               >
                 Cancel
               </button>
               <button 
                 onClick={handleConfirmedDeleteExecute}
-                style={{ background: colors.redText, color: colors.white, border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}
+                style={{ background: pageColors.redText, color: pageColors.white, border: 'none', padding: '10px 20px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}
               >
                 Delete Plan
               </button>
@@ -271,7 +276,7 @@ const SubscriptionVault = () => {
       )}
 
       {toast.show && (
-        <div style={{ position: 'fixed', top: '24px', right: '24px', background: toast.type === 'success' ? colors.successBg : colors.redBg, borderLeft: `4px solid ${toast.type === 'success' ? colors.successText : colors.redText}`, padding: '14px 24px', borderRadius: '6px', boxShadow: '0 8px 20px rgba(54,76,79,0.12)', zIndex: 1000, display: 'flex', alignItems: 'center', gap: '12px', color: toast.type === 'success' ? colors.successText : colors.redText, fontWeight: 600, fontSize: '0.85rem', animation: 'fadeIn 0.2s ease' }}>
+        <div style={{ position: 'fixed', top: '24px', right: '24px', background: toast.type === 'success' ? pageColors.successBg : pageColors.redBg, borderLeft: `4px solid ${toast.type === 'success' ? pageColors.successText : pageColors.redText}`, padding: '14px 24px', borderRadius: '6px', boxShadow: '0 8px 20px rgba(54,76,79,0.12)', zIndex: 1000, display: 'flex', alignItems: 'center', gap: '12px', color: toast.type === 'success' ? pageColors.successText : pageColors.redText, fontWeight: 600, fontSize: '0.85rem', animation: 'fadeIn 0.2s ease' }}>
           {toast.type === 'success' ? '✓' : '✕'}
           <span>{toast.message}</span>
         </div>
@@ -279,30 +284,30 @@ const SubscriptionVault = () => {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: '1.8rem', color: colors.darkTeal, fontFamily: "'Oswald', sans-serif", fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SUBSCRIPTIONS/PLANS</h2>
-          <p style={{ color: colors.textMuted, fontSize: '0.85rem', marginTop: '2px' }}>Monitor ongoing student plan cycles and service configurations</p>
+          <h2 style={{ fontSize: '1.8rem', color: pageColors.darkTeal, fontFamily: "'Oswald', sans-serif", fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SUBSCRIPTIONS/PLANS</h2>
+          <p style={{ color: pageColors.textMuted, fontSize: '0.85rem', marginTop: '2px' }}>Monitor ongoing student plan cycles and service configurations</p>
         </div>
         
         {showAddForm ? (
-          <button onClick={handleFormReset} style={{ background: 'none', border: 'none', color: colors.textPrimary, fontSize: '20px', fontWeight: '300', cursor: 'pointer', outline: 'none', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', backgroundColor: 'rgba(54,76,79,0.06)' }}>✕</button>
+          <button onClick={handleFormReset} style={{ background: 'none', border: 'none', color: pageColors.textPrimary, fontSize: '20px', fontWeight: '300', cursor: 'pointer', outline: 'none', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', backgroundColor: 'rgba(54,76,79,0.06)' }}>✕</button>
         ) : (
-          <button onClick={() => setShowAddForm(true)} style={{ background: colors.darkTeal, color: colors.white, border: 'none', padding: '10px 22px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>＋ Add Subscription</button>
+          <button onClick={() => setShowAddForm(true)} style={{ background: pageColors.darkTeal, color: pageColors.white, border: 'none', padding: '10px 22px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}>＋ Add Subscription</button>
         )}
       </div>
 
       {showAddForm && (
-        <form onSubmit={handleCreateOrUpdateSubscriptionSubmit} style={{ background: colors.white, padding: '24px', borderRadius: '16px', border: `0.5px solid ${colors.border}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', alignItems: 'end', animation: 'slideDown 0.2s ease' }}>
+        <form onSubmit={handleCreateOrUpdateSubscriptionSubmit} style={{ background: pageColors.white, padding: '24px', borderRadius: '16px', border: `0.5px solid ${pageColors.border}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', alignItems: 'end', animation: 'slideDown 0.2s ease' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: colors.textPrimary, marginBottom: '6px' }}>Service Name</label>
-            <input type="text" placeholder="e.g. YouTube Premium" value={newSubData.name} onChange={(e) => setNewSubData({...newSubData, name: e.target.value})} required style={{ width: '100%', padding: '10px', border: `1px solid ${colors.border}`, borderRadius: '6px', outline: 'none' }} />
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: pageColors.textPrimary, marginBottom: '6px' }}>Service Name</label>
+            <input type="text" placeholder="e.g. YouTube Premium" value={newSubData.name} onChange={(e) => setNewSubData({...newSubData, name: e.target.value})} required style={{ width: '100%', padding: '10px', border: `1px solid ${pageColors.border}`, borderRadius: '6px', outline: 'none' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: colors.textPrimary, marginBottom: '6px' }}>Cost (₹)</label>
-            <input type="number" placeholder="0" value={newSubData.amount} onChange={(e) => setNewSubData({...newSubData, amount: e.target.value})} required style={{ width: '100%', padding: '10px', border: `1px solid ${colors.border}`, borderRadius: '6px', outline: 'none' }} />
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: pageColors.textPrimary, marginBottom: '6px' }}>Cost (₹)</label>
+            <input type="number" placeholder="0" value={newSubData.amount} onChange={(e) => setNewSubData({...newSubData, amount: e.target.value})} required style={{ width: '100%', padding: '10px', border: `1px solid ${pageColors.border}`, borderRadius: '6px', outline: 'none' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: colors.textPrimary, marginBottom: '6px' }}>Category</label>
-            <select value={newSubData.category} onChange={(e) => setNewSubData({...newSubData, category: e.target.value})} style={{ width: '100%', padding: '10px', border: `1px solid ${colors.border}`, borderRadius: '6px', outline: 'none', background: colors.white }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: pageColors.textPrimary, marginBottom: '6px' }}>Category</label>
+            <select value={newSubData.category} onChange={(e) => setNewSubData({...newSubData, category: e.target.value})} style={{ width: '100%', padding: '10px', border: `1px solid ${pageColors.border}`, borderRadius: '6px', outline: 'none', background: pageColors.white }}>
               <option value="Streaming & Video">Streaming & Video</option>
               <option value="Music & Podcasts">Music & Podcasts</option>
               <option value="Fitness & Health">Fitness & Health</option>
@@ -312,50 +317,50 @@ const SubscriptionVault = () => {
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: colors.textPrimary, marginBottom: '6px' }}>Billing Interval</label>
-            <select value={newSubData.billingCycle} onChange={(e) => setNewSubData({...newSubData, billingCycle: e.target.value})} style={{ width: '100%', padding: '10px', border: `1px solid ${colors.border}`, borderRadius: '6px', outline: 'none', background: colors.white }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: pageColors.textPrimary, marginBottom: '6px' }}>Billing Interval</label>
+            <select value={newSubData.billingCycle} onChange={(e) => setNewSubData({...newSubData, billingCycle: e.target.value})} style={{ width: '100%', padding: '10px', border: `1px solid ${pageColors.border}`, borderRadius: '6px', outline: 'none', background: pageColors.white }}>
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: colors.textPrimary, marginBottom: '6px' }}>Next Renewal Date</label>
-            <input type="date" value={newSubData.nextBillingDate} onChange={(e) => setNewSubData({...newSubData, nextBillingDate: e.target.value})} required style={{ width: '100%', padding: '10px', border: `1px solid ${colors.border}`, borderRadius: '6px', outline: 'none' }} />
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: pageColors.textPrimary, marginBottom: '6px' }}>Next Renewal Date</label>
+            <input type="date" value={newSubData.nextBillingDate} onChange={(e) => setNewSubData({...newSubData, nextBillingDate: e.target.value})} required style={{ width: '100%', padding: '10px', border: `1px solid ${pageColors.border}`, borderRadius: '6px', outline: 'none' }} />
           </div>
-          <button type="submit" disabled={isAdding} style={{ background: editingId ? '#BA7517' : '#0F6E56', color: colors.white, border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>
+          <button type="submit" disabled={isAdding} style={{ background: editingId ? '#BA7517' : '#0F6E56', color: pageColors.white, border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>
             {editingId ? 'Save Changes' : 'Register Plan'}
           </button>
         </form>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
-        <div style={{ background: colors.darkTeal, borderRadius: '18px', padding: '20px 24px', color: colors.white }}>
+        <div style={{ background: pageColors.darkTeal, borderRadius: '18px', padding: '20px 24px', color: pageColors.white }}>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#5DCAA5', marginBottom: '6px' }}>Monthly Burn</div>
           <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '2.4rem', fontWeight: 600 }}>₹{monthlyBurnSum.toLocaleString('en-IN')}</div>
           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>{activePlans.length} active • {pausedPlans.length} paused</div>
         </div>
 
-        <div style={{ background: colors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${colors.border}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '6px' }}>Annual Cost</div>
-          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: colors.textDark }}>₹{annualCostSum}k</div>
+        <div style={{ background: pageColors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${pageColors.border}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: pageColors.textMuted, marginBottom: '6px' }}>Annual Cost</div>
+          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: pageColors.textDark }}>₹{annualCostSum}k</div>
         </div>
 
-        <div style={{ background: colors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${colors.border}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '6px' }}>Next Renewal</div>
-          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: colors.textDark }}>
+        <div style={{ background: pageColors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${pageColors.border}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: pageColors.textMuted, marginBottom: '6px' }}>Next Renewal</div>
+          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: pageColors.textDark }}>
             {primaryUpcoming ? new Date(primaryUpcoming.nextBillingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'None'}
           </div>
           {primaryUpcoming && (
-            <div style={{ fontSize: '11px', color: colors.textMuted, marginTop: '4px', fontWeight: 500 }}>🕒 {getDaysRemainingText(primaryUpcoming.nextBillingDate)} left</div>
+            <div style={{ fontSize: '11px', color: pageColors.textMuted, marginTop: '4px', fontWeight: 500 }}>🕒 {getDaysRemainingText(primaryUpcoming.nextBillingDate)} left</div>
           )}
         </div>
 
-        <div style={{ background: colors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${colors.border}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div style={{ background: pageColors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${pageColors.border}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '6px' }}>Paused Savings</div>
-            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: colors.textDark }}>₹{pausedSavingsSum}</div>
+            <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: pageColors.textMuted, marginBottom: '6px' }}>Paused Savings</div>
+            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: pageColors.textDark }}>₹{pausedSavingsSum}</div>
           </div>
-          <div style={{ width: 'fit-content', background: colors.successBg, color: colors.successText, fontSize: '10px', fontWeight: 600, padding: '4px 10px', borderRadius: '12px' }}>saved / month</div>
+          <div style={{ width: 'fit-content', background: pageColors.successBg, color: pageColors.successText, fontSize: '10px', fontWeight: 600, padding: '4px 10px', borderRadius: '12px' }}>saved / month</div>
         </div>
       </div>
 
@@ -364,17 +369,17 @@ const SubscriptionVault = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', overflow: 'visible' }}>
           
           <div style={{ overflow: 'visible' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: pageColors.textMuted, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>ACTIVE • {activePlans.length}</span>
-              <div style={{ flex: 1, height: '0.5px', backgroundColor: colors.border }} />
+              <div style={{ flex: 1, height: '0.5px', backgroundColor: pageColors.border }} />
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'visible' }}>
               {activePlans.length === 0 ? (
-                <div style={{ background: colors.white, padding: '20px', borderRadius: '14px', border: `0.5px solid ${colors.border}`, color: colors.textMuted, textAlign: 'center' }}>No active plans tracked.</div>
+                <div style={{ background: pageColors.white, padding: '20px', borderRadius: '14px', border: `0.5px solid ${pageColors.border}`, color: pageColors.textMuted, textAlign: 'center' }}>No active plans tracked.</div>
               ) : activePlans.map(sub => (
                 <SubscriptionRow 
-                  key={sub._id} sub={sub} colors={colors} 
+                  key={sub._id} sub={sub} colors={pageColors} 
                   mapCategoryIcons={mapCategoryIcons} getCategoryThemeColor={getCategoryThemeColor} 
                   getDaysRemainingText={getDaysRemainingText} toggleStatus={toggleStatus} 
                   handleInitiateEditMode={handleInitiateEditMode} setDeleteTargetId={setDeleteTargetId} 
@@ -384,17 +389,17 @@ const SubscriptionVault = () => {
           </div>
 
           <div style={{ overflow: 'visible' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: pageColors.textMuted, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>PAUSED • {pausedPlans.length}</span>
-              <div style={{ flex: 1, height: '0.5px', backgroundColor: colors.border }} />
+              <div style={{ flex: 1, height: '0.5px', backgroundColor: pageColors.border }} />
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'visible' }}>
               {pausedPlans.length === 0 ? (
-                <div style={{ background: colors.white, padding: '20px', borderRadius: '14px', border: `0.5px solid ${colors.border}`, color: colors.textMuted, textAlign: 'center' }}>No current plans held in paused retention loop.</div>
+                <div style={{ background: pageColors.white, padding: '20px', borderRadius: '14px', border: `0.5px solid ${pageColors.border}`, color: pageColors.textMuted, textAlign: 'center' }}>No current plans held in paused retention loop.</div>
               ) : pausedPlans.map(sub => (
                 <SubscriptionRow 
-                  key={sub._id} sub={sub} colors={colors} 
+                  key={sub._id} sub={sub} colors={pageColors} 
                   mapCategoryIcons={mapCategoryIcons} getCategoryThemeColor={getCategoryThemeColor} 
                   getDaysRemainingText={getDaysRemainingText} toggleStatus={toggleStatus} 
                   handleInitiateEditMode={handleInitiateEditMode} setDeleteTargetId={setDeleteTargetId} 
@@ -406,27 +411,27 @@ const SubscriptionVault = () => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div style={{ background: colors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${colors.border}` }}>
+          <div style={{ background: pageColors.white, borderRadius: '18px', padding: '20px', border: `0.5px solid ${pageColors.border}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: colors.textDark }}>Renewal timeline</span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: pageColors.textDark }}>Renewal timeline</span>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', paddingLeft: '16px', borderLeft: `1px solid ${colors.border}`, marginLeft: '6px', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', paddingLeft: '16px', borderLeft: `1px solid ${pageColors.border}`, marginLeft: '6px', gap: '16px' }}>
               {sortedUpcoming.slice(0, 5).map(sub => {
                 const subColor = getCategoryThemeColor(sub.category);
                 return (
                   <div key={sub._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
-                    <div style={{ position: 'absolute', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: subColor, left: '-20px', top: '50%', transform: 'translateY(-50%)', border: `2px solid ${colors.white}`, boxSizing: 'content-box' }} />
+                    <div style={{ position: 'absolute', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: subColor, left: '-20px', top: '50%', transform: 'translateY(-50%)', border: `2px solid ${pageColors.white}`, boxSizing: 'content-box' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: `${subColor}10`, color: subColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {mapCategoryIcons(sub.category)}
                       </div>
                       <div>
-                        <div style={{ fontSize: '11px', fontWeight: 600, color: colors.textDark }}>{sub.name}</div>
-                        <div style={{ fontSize: '9px', color: colors.textMuted, marginTop: '1px' }}>{new Date(sub.nextBillingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {getDaysRemainingText(sub.nextBillingDate)}</div>
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: pageColors.textDark }}>{sub.name}</div>
+                        <div style={{ fontSize: '9px', color: pageColors.textMuted, marginTop: '1px' }}>{new Date(sub.nextBillingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {getDaysRemainingText(sub.nextBillingDate)}</div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 600, fontFamily: "'Oswald', sans-serif", color: colors.textDark }}>₹{sub.amount}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 600, fontFamily: "'Oswald', sans-serif", color: pageColors.textDark }}>₹{sub.amount}</span>
                   </div>
                 );
               })}
@@ -436,10 +441,10 @@ const SubscriptionVault = () => {
           {activePlans.some(p => p.name.toLowerCase().includes('netflix')) && activePlans.some(p => p.name.toLowerCase().includes('youtube')) && (
             <div style={{ background: 'linear-gradient(135deg, #E8F6F0, #F0FAF6)', borderRadius: '14px', padding: '16px', border: '0.5px solid #9FE1CB' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                <div style={{ width: '20px', height: '20px', background: colors.successText, borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.white }}><IconSparkles /></div>
+                <div style={{ width: '20px', height: '20px', background: pageColors.successText, borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: pageColors.white }}><IconSparkles /></div>
                 <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#085041' }}>Smart Nudge</div>
               </div>
-              <div style={{ fontSize: '11px', color: colors.textPrimary, lineHeight: '1.5' }}>
+              <div style={{ fontSize: '11px', color: pageColors.textPrimary, lineHeight: '1.5' }}>
                 You have multiple entertainment streaming plans active simultaneously. Consider auditing usage velocity curves to salvage passive burn lines.
               </div>
             </div>

@@ -1,8 +1,9 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithAuth } from '../../api/baseQuery';
 
 export const authApi = createApi({
   reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({ baseUrl: process.env.REACT_APP_API_URL || 'http://localhost:5000' }),
+  baseQuery: baseQueryWithAuth,
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (credentials) => ({ url: '/api/auth/login', method: 'POST', body: credentials }),
@@ -16,11 +17,16 @@ export const authApi = createApi({
 forgotPassword: builder.mutation({
   query: (payload) => ({ url: '/api/auth/forgot-password', method: 'POST', body: payload }),
 }),
-resetPassword: builder.mutation({
-  query: (payload) => ({ url: '/api/auth/reset-password', method: 'POST', body: payload }),
-
+    resetPassword: builder.mutation({
+      query: (payload) => ({ url: '/api/auth/reset-password', method: 'POST', body: payload }),
+    }),
+    logout: builder.mutation({
+      query: () => ({ url: '/api/auth/logout', method: 'POST' }),
+    }),
+    updateProfile: builder.mutation({
+      query: (payload) => ({ url: '/api/users/update', method: 'PUT', body: payload }),
     }),
   }),
 });
 
-export const { useLoginMutation, useSignupMutation, useVerifyEmailMutation, useForgotPasswordMutation, useResetPasswordMutation } = authApi;
+export const { useLoginMutation, useSignupMutation, useVerifyEmailMutation, useForgotPasswordMutation, useResetPasswordMutation, useUpdateProfileMutation, useLogoutMutation } = authApi;

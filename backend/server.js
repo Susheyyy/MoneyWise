@@ -2,8 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
-const groupRoutes = require('./routes/groupRoutes');
 const cookieParser = require('cookie-parser');
+
 
 const app = express();
 
@@ -35,8 +35,8 @@ app.get('/', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ systemFault: true, message: 'Global execution failure trapped by core stack middleware framework' });
+  res.status(500).json({ systemFault: true, message: 'API execution failed.' });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Listening on ${PORT}`));
+app.listen(PORT, () => console.log(`API Running on ${PORT}`));

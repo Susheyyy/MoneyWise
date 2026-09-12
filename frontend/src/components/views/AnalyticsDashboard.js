@@ -22,7 +22,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
   }
 
   const totalExpenses = summary?.totalExpenses || 0;
-  const budgetLimit = 20000; 
+  const budgetLimit = categories.reduce((sum, cat) => sum + (Number(cat.monthlyBudget) || 0), 0) || 20000;
   const rawPercentage = budgetLimit > 0 ? (totalExpenses / budgetLimit) * 100 : 0;
   const usedPercentage = Math.min(Math.round(rawPercentage), 100);
 

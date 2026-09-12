@@ -11,16 +11,23 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, monthlyLogPreference, monthlyLogCustomDate, monthlyLogLastDismissed } = req.body;
     const user = await User.findById(req.user.id);
     
     if (user) {
       user.name = name || user.name;
+      if (monthlyLogPreference !== undefined) user.monthlyLogPreference = monthlyLogPreference;
+      if (monthlyLogCustomDate !== undefined) user.monthlyLogCustomDate = monthlyLogCustomDate;
+      if (monthlyLogLastDismissed !== undefined) user.monthlyLogLastDismissed = monthlyLogLastDismissed;
+
       const updatedUser = await user.save();
       res.json({
         _id: updatedUser._id,
         name: updatedUser.name,
-        email: updatedUser.email
+        email: updatedUser.email,
+        monthlyLogPreference: updatedUser.monthlyLogPreference,
+        monthlyLogCustomDate: updatedUser.monthlyLogCustomDate,
+        monthlyLogLastDismissed: updatedUser.monthlyLogLastDismissed
       });
     } else {
       res.status(404).json({ message: 'User not found' });

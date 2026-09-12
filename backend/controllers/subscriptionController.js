@@ -14,7 +14,6 @@ exports.createSubscription = async (req, res) => {
     const sub = await Subscription.create({ ...req.body, user: req.user.id });
     res.status(201).json(sub);
   } catch (err) {
-    console.error("DEBUG: Mongoose Error:", err.message); 
     res.status(400).json({ message: err.message });
   }
 };

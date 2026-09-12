@@ -36,8 +36,29 @@ def analyze():
         trends_dict = {str(k): float(v) for k, v in cat_group.items()}
         projected_forecast = float(np.round(total_spent * 1.07))
 
-        food_total = float(df_expenses[df_expenses['category'] == 'Food']['amount'].sum()) if 'Food' in df_expenses['category'].values else 0
-        percentage_increase = 23 if food_total > 4000 else 0
+        # Calculate real MoM percentage increase for Food
+        food_expenses = df_expenses[df_expenses['category'].str.lower() == 'food']
+        
+        if not food_expenses.empty and 'date' in df_expenses.columns:
+            food_expenses['date'] = pd.to_datetime(food_expenses['date'], errors='coerce')
+            now = pd.Timestamp.now()
+            current_month_mask = (food_expenses['date'].dt.month == now.month) & (food_expenses['date'].dt.year == now.year)
+            
+            # Handle january (month 1 -> 12, year -> year - 1)
+            last_month_val = 12 if now.month == 1 else now.month - 1
+            last_month_year = now.year - 1 if now.month == 1 else now.year
+            last_month_mask = (food_expenses['date'].dt.month == last_month_val) & (food_expenses['date'].dt.year == last_month_year)
+
+            current_food = float(food_expenses[current_month_mask]['amount'].sum())
+            last_food = float(food_expenses[last_month_mask]['amount'].sum())
+            
+            if last_food > 0:
+                percentage_increase = int(((current_food - last_food) / last_food) * 100)
+                percentage_increase = max(0, percentage_increase) # Only report increases
+            else:
+                percentage_increase = 0
+        else:
+            percentage_increase = 0
 
         health_score = max(50, 100 - (len(anomalies_list) * 12) - int(total_spent / 3000))
 

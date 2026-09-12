@@ -87,7 +87,7 @@ exports.deleteTransaction = async (req, res) => {
       await targetWallet.save({ session });
     }
 
-    await Transaction.deleteOne({ _id: txn._id }).session(session);
+    await Transaction.deleteOne({ _id: txn._id }, { session });
 
     await session.commitTransaction();
     session.endSession();
@@ -224,8 +224,10 @@ exports.createTransaction = async (req, res) => {
 exports.getAnalyticsSummary = async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const stats = await Transaction.aggregate([
-      { $match: { user: userId } },
+      { $match: { user: userId, date: { $gte: startOfMonth } } },
       {
         $group: {
           _id: '$type',
