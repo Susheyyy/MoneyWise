@@ -6,7 +6,7 @@ import { getErrorMessage } from '../../utils/errorHandler';
 const JoinGroupLanding = () => {
   const { token } = useParams();
   const navigate = useNavigate();
-  const [joinGroup, { isLoading }] = useJoinGroupViaLinkMutation();
+  const [joinGroup] = useJoinGroupViaLinkMutation();
   const [status, setStatus] = useState({ type: 'loading', message: 'Validating your group invitation...' });
 
   useEffect(() => {

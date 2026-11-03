@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import LoginSignup from './features/auth/LoginSignup';
 import LandingPage from './components/views/LandingPage';
 import JoinGroupLanding from './components/views/JoinGroupLanding';
+import ClickSpark from './components/views/ClickSpark';
 
 import { useGetTransactionsQuery, useGetSummaryQuery } from './features/transactions/transactionApi';
 import { useGetCategoriesQuery } from './features/categories/categoryApi';
@@ -31,8 +32,9 @@ function App() {
   const dynamicSyncLoading = summaryLoading || catsLoading || txnsLoading;
 
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
+    <ClickSpark sparkColor="#1D9E75" sparkSize={9} sparkRadius={18} sparkCount={8} duration={500}>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginSignup initialIsLogin={true} />} />
       <Route path="/signup" element={<LoginSignup initialIsLogin={false} />} />
 
@@ -131,6 +133,7 @@ function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </ClickSpark>
   );
 }
 

@@ -21,7 +21,11 @@ const userSchema = new mongoose.Schema({
   verificationCodeExpires: { type: Date, default: null },
   monthlyLogPreference: { type: String, enum: ['start', 'end', 'custom'], default: 'start' },
   monthlyLogCustomDate: { type: Number, default: 1, min: 1, max: 28 },
-  monthlyLogLastDismissed: { type: String, default: null }
+  monthlyLogLastDismissed: { type: String, default: null },
+  phone: { type: String, default: '' },
+  institution: { type: String, default: '' },
+  city: { type: String, default: '' },
+  bio: { type: String, default: '' }
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {

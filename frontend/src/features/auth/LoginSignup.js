@@ -60,7 +60,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
     try {
       if (viewState === 'login') {
         const data = await login({ email: formData.email, password: formData.password }).unwrap();
-        dispatch(setCredentials({ user: { name: data.name, email: data.email }, token: data.token }));
+        dispatch(setCredentials({ user: data.user }));
         triggerToast('Authentication verified! Redirecting...', 'success');
         setTimeout(() => navigate('/dashboard'), 1000);
       } else {
@@ -86,7 +86,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
       const data = await verifyEmail({ email: registeredEmail, code: verificationCode }).unwrap();
       triggerToast('Security token authorized successfully!', 'success');
       
-      dispatch(setCredentials({ user: { name: data.name, email: data.email }, token: data.token }));
+      dispatch(setCredentials({ user: data.user }));
       
       setTimeout(() => {
         setViewState('login');
@@ -253,7 +253,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
   const isLeftPanelTeal = (viewState === 'login' || viewState === 'forgot_request');
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Montserrat', sans-serif", overflow: 'hidden', position: 'relative' }}>
+    <div style={{ display: 'flex', minHeight: '100%', fontFamily: "'Montserrat', sans-serif", overflow: 'hidden', position: 'relative' }}>
       
       {toast.show && (
         <div style={{

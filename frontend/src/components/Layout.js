@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logout, updateUser } from '../features/auth/authSlice';
@@ -121,7 +121,7 @@ const Layout = ({ children }) => {
     setHasLoggedMonthlySavings(true);
     setIsNotificationOpen(false);
     try {
-      const res = await updateProfile({ monthlyLogLastDismissed: currentMonthYear }).unwrap();
+      await updateProfile({ monthlyLogLastDismissed: currentMonthYear }).unwrap();
       dispatch(updateUser({ monthlyLogLastDismissed: currentMonthYear }));
     } catch (e) {
       console.error('Failed to dismiss monthly log', e);
@@ -148,6 +148,15 @@ const Layout = ({ children }) => {
     }
   };
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem('sidebarCollapsed') === 'true'
+  );
+  const sidebarWidth = sidebarCollapsed ? '64px' : '220px';
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -157,50 +166,88 @@ const Layout = ({ children }) => {
       fontSize: '13px',
       transition: 'background-color 0.2s ease',
     }}>
-      {/* ── SOLID SIDEBAR (SLACK STYLE) ───────────────────────────── */}
+      {/* ── SIDEBAR ───────────────────────────────────────────── */}
       <nav style={{
-        width: '72px',
+        width: sidebarWidth,
         flexShrink: 0,
-        backgroundColor: '#1E3336', // Pinned solid ink/dark-teal color
+        backgroundColor: colors.sidebar,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
         position: 'fixed',
         top: 0,
         bottom: 0,
         left: 0,
         zIndex: 200,
-        padding: '24px 0',
-        transition: 'all 0.2s ease',
+        padding: '16px 10px',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        transition: 'width 0.2s ease',
       }}>
-        {/* Navigation items */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={() => setSidebarCollapsed(prev => !prev)}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          style={{
+            alignSelf: sidebarCollapsed ? 'center' : 'flex-end',
+            width: '28px',
+            height: '28px',
+            border: 'none',
+            background: 'transparent',
+            color: colors.white,
+            cursor: 'pointer',
+            borderRadius: '6px',
+            fontSize: '18px',
+            lineHeight: 1,
+            marginBottom: '12px',
+          }}
+        >
+          {sidebarCollapsed ? '›' : '‹'}
+        </button>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {NAV_ITEMS.map(item => {
             const isActive = currentPath === item.path;
             return (
-              <div key={item.key} className="sidebar-tooltip-container">
-                <button
-                  onClick={() => navigate(item.path)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '12px',
-                    border: 'none',
-                    background: isActive ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'all 0.15s ease',
-                  }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {item.icon(isActive)}
-                </button>
-                <span className="sidebar-tooltip">{item.label}</span>
-              </div>
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => navigate(item.path)}
+                title={item.label}
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                  gap: '12px',
+                  height: '40px',
+                  padding: sidebarCollapsed ? 0 : '0 12px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: isActive ? 'rgba(255, 255, 255, 0.10)' : 'transparent',
+                  color: colors.white,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  fontSize: '13px',
+                  fontWeight: isActive ? 600 : 500,
+                  whiteSpace: 'nowrap',
+                  textAlign: 'left',
+                }}
+              >
+                {isActive && (
+                  <span style={{
+                    position: 'absolute',
+                    left: '-10px',
+                    top: '8px',
+                    bottom: '8px',
+                    width: '3px',
+                    borderRadius: '0 2px 2px 0',
+                    background: colors.tealPrimary,
+                  }} />
+                )}
+                <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon(isActive)}</span>
+                {!sidebarCollapsed && <span>{item.label}</span>}
+              </button>
             );
           })}
         </div>
@@ -209,7 +256,7 @@ const Layout = ({ children }) => {
       {/* ── MAIN CONTENT AREA ───────────────────────────────── */}
       <div style={{
         flex: 1,
-        marginLeft: '72px',
+        marginLeft: sidebarWidth,
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
@@ -447,7 +494,7 @@ const Layout = ({ children }) => {
                     {/* User info */}
                     <div style={{ padding: '4px 6px 10px', borderBottom: `1px solid ${colors.border}` }}>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: colors.textDark }}>
-                        {user?.name || 'Sushmita Das'}
+                        {user?.name || ''}
                       </div>
                       <div style={{ fontSize: '11px', color: colors.textMuted, marginTop: '2px', wordBreak: 'break-all' }}>
                         {user?.email || 'user@gmail.com'}

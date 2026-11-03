@@ -36,6 +36,7 @@ const RoommateSplitter = () => {
   const [groupName, setGroupName] = useState('');
   const [editNameInput, setEditNameInput] = useState('');
   const [emailInput, setEmailInput] = useState('');
+  const signedInUser = useSelector((state) => state.auth.user);
   const [stagedEmails, setStagedEmails] = useState([]);
   const [appendEmailInput, setAppendEmailInput] = useState('');
 
@@ -105,6 +106,10 @@ const RoommateSplitter = () => {
     e.preventDefault();
     if (!emailInput.trim()) return;
     const targetEmail = emailInput.trim().toLowerCase();
+    if (signedInUser?.email && targetEmail === signedInUser.email.toLowerCase()) {
+      showNotification("You can't invite yourself.", 'error');
+      return;
+    }
     if (stagedEmails.includes(targetEmail)) {
       showNotification('Member email is already staged.', 'error');
       return;

@@ -1,5 +1,6 @@
 const Transaction = require('../models/Transaction');
 const Wallet = require('../models/Wallet');
+const Category = require('../models/Category');
 const mongoose = require('mongoose');
 
 exports.getTransactions = async (req, res) => {
@@ -37,6 +38,10 @@ exports.updateTransaction = async (req, res) => {
     
     const { description, amount, category, wallet, type, paymentMode, tags, billUrl, date } = req.body;
     
+    if (category && category !== oldTxn.category?.toString()) {
+      const targetCategory = await Category.findOne({ _id: category, user: req.user.id }).session(session);
+      if (!targetCategory) throw new Error('Target category not found or unauthorized');
+    }
     
     const oldWallet = await Wallet.findOne({ _id: oldTxn.wallet, user: req.user.id }).session(session);
     if (oldWallet) {
@@ -201,6 +206,9 @@ exports.createTransaction = async (req, res) => {
 
     const targetWallet = await Wallet.findOne({ _id: wallet, user: req.user.id }).session(session);
     if (!targetWallet) throw new Error('Target funding wallet context not found');
+
+    const targetCategory = await Category.findOne({ _id: category, user: req.user.id }).session(session);
+    if (!targetCategory) throw new Error('Target category not found or unauthorized');
 
     const txn = new Transaction({
       user: req.user.id, wallet, category, description, amount, type, paymentMode, tags, billUrl, date

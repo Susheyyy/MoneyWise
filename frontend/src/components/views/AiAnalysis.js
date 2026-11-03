@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useTheme } from '../../context/ThemeContext';
 
 const AiAnalysis = () => {
-  const { theme, colors } = useTheme();
+  const { colors } = useTheme();
   const barChartRef = useRef(null);
   const lineChartRef = useRef(null);
   const [loading, setLoading] = useState(true);

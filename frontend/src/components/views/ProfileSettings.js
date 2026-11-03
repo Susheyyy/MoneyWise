@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useGetCategoriesQuery, useUpdateCategoryBudgetMutation } from '../../features/categories/categoryApi';
-import { useUpdateProfileMutation, useLogoutMutation } from '../../features/auth/authApi';
+import { useUpdateProfileMutation, useLogoutMutation, useGetProfileQuery } from '../../features/auth/authApi';
 import { updateUser, logout as logoutAction } from '../../features/auth/authSlice';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { useTheme } from '../../context/ThemeContext';
@@ -20,23 +20,20 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   const [activeMenu, setActiveMenu] = useState('Profile');
 
   const [savedData, setSavedData] = useState({
-    firstName: currentUser?.name?.split(' ')[0] || 'Sushmita',
-    lastName: currentUser?.name?.split(' ')[1] || 'Das',
-    email: currentUser?.email || 'dsushii1511@gmail.com',
-    phone: '+91 98765 43210',
-    institution: 'IIT Bombay',
-    city: 'Mumbai',
-    bio: 'Full-stack developer focused on full-stack web development, backend security, and AI integration.',
+    firstName: currentUser?.name?.split(' ')[0] || '',
+    lastName: currentUser?.name?.split(' ')[1] || '',
+    email: currentUser?.email || '',
+    phone: '',
+    institution: '',
+    city: '',
+    bio: '',
     budgetAlerts: true,
     subRenewals: true,
     groupUpdates: true,
     weeklyDigest: false,
     goalMilestones: true,
-    compactTable: false,
-    hideBalance: false,
     monthlyLogPreference: currentUser?.monthlyLogPreference || 'start',
     monthlyLogCustomDate: currentUser?.monthlyLogCustomDate || 1,
-    budgets: { food: '5000', shopping: '4000', transport: '2000', hostel: '3500', entertainment: '1500', education: '2000', health: '1200' }
   });
 
   const [firstName, setFirstName] = useState(savedData.firstName);
@@ -47,14 +44,38 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   const [city, setCity] = useState(savedData.city);
   const [bio, setBio] = useState(savedData.bio);
 
+  // Load the real profile from the server instead of showing placeholder values.
+  const { data: profile } = useGetProfileQuery();
+  useEffect(() => {
+    if (!profile) return;
+    const parts = (profile.name || '').split(' ');
+    const first = parts[0] || '';
+    const last = parts.slice(1).join(' ');
+    const values = {
+      firstName: first,
+      lastName: last,
+      email: profile.email || '',
+      phone: profile.phone || '',
+      institution: profile.institution || '',
+      city: profile.city || '',
+      bio: profile.bio || '',
+    };
+    setFirstName(values.firstName);
+    setLastName(values.lastName);
+    setEmail(values.email);
+    setPhone(values.phone);
+    setInstitution(values.institution);
+    setCity(values.city);
+    setBio(values.bio);
+    setSavedData(prev => ({ ...prev, ...values }));
+  }, [profile]);
+
   const [budgetAlerts, setBudgetAlerts] = useState(savedData.budgetAlerts);
   const [subRenewals, setSubRenewals] = useState(savedData.subRenewals);
   const [groupUpdates, setGroupUpdates] = useState(savedData.groupUpdates);
   const [weeklyDigest, setWeeklyDigest] = useState(savedData.weeklyDigest);
   const [goalMilestones, setGoalMilestones] = useState(savedData.goalMilestones);
   
-  const [compactTable, setCompactTable] = useState(savedData.compactTable);
-  const [hideBalance, setHideBalance] = useState(savedData.hideBalance);
   
   const [monthlyLogPreference, setMonthlyLogPreference] = useState(savedData.monthlyLogPreference);
   const [monthlyLogCustomDate, setMonthlyLogCustomDate] = useState(savedData.monthlyLogCustomDate);
@@ -95,14 +116,12 @@ const ProfileSettings = ({ onBackToDashboard }) => {
       groupUpdates !== savedData.groupUpdates ||
       weeklyDigest !== savedData.weeklyDigest ||
       goalMilestones !== savedData.goalMilestones ||
-      compactTable !== savedData.compactTable ||
-      hideBalance !== savedData.hideBalance ||
       monthlyLogPreference !== savedData.monthlyLogPreference ||
       monthlyLogCustomDate !== savedData.monthlyLogCustomDate ||
       budgetModified;
     
     setHasChanges(isChanged);
-  }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, compactTable, hideBalance, liveBudgets, savedData, dbCategories]);
+  }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, liveBudgets, monthlyLogPreference, monthlyLogCustomDate, savedData, dbCategories]);
 
   const uiColors = {
     ...colors,
@@ -138,13 +157,19 @@ const ProfileSettings = ({ onBackToDashboard }) => {
       const updatedMaster = {
         firstName, lastName, email, phone, institution, city, bio,
         budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones,
-        compactTable, hideBalance, monthlyLogPreference, monthlyLogCustomDate, budgets: { ...liveBudgets }
+        monthlyLogPreference, monthlyLogCustomDate
       };
 
-      if (monthlyLogPreference !== currentUser?.monthlyLogPreference || monthlyLogCustomDate !== currentUser?.monthlyLogCustomDate) {
-        const profileData = await updateProfileApi({ monthlyLogPreference, monthlyLogCustomDate }).unwrap();
-        dispatch(updateUser(profileData));
-      }
+      const profileData = await updateProfileApi({
+        name: `${firstName} ${lastName}`.trim(),
+        phone,
+        institution,
+        city,
+        bio,
+        monthlyLogPreference,
+        monthlyLogCustomDate,
+      }).unwrap();
+      dispatch(updateUser(profileData));
 
       setSavedData(updatedMaster);
       setHasChanges(false);
@@ -167,8 +192,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     setGroupUpdates(savedData.groupUpdates);
     setWeeklyDigest(savedData.weeklyDigest);
     setGoalMilestones(savedData.goalMilestones);
-    setCompactTable(savedData.compactTable);
-    setHideBalance(savedData.hideBalance);
     setMonthlyLogPreference(savedData.monthlyLogPreference);
     setMonthlyLogCustomDate(savedData.monthlyLogCustomDate);
     
@@ -230,7 +253,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr) 340px', background: uiColors.bgMain }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr)', background: uiColors.bgMain }}>
+
         <aside style={{ background: uiColors.white, borderRight: `1px solid ${uiColors.border}`, padding: '8px 0 24px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '16px 24px 8px 24px' }}>Account</div>
           <div onClick={() => setActiveMenu('Profile')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Profile' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Profile' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Profile' ? uiColors.successBg : 'transparent' }}>Profile Details</div>
@@ -253,7 +277,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '4px 24px 8px 24px' }}>Settings</div>
           <div onClick={() => setActiveMenu('Settings')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Settings' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Settings' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Settings' ? uiColors.successBg : 'transparent' }}>Settings</div>
         </aside>
-
         <main style={{ padding: '32px 48px', display: 'flex', flexDirection: 'column', gap: '32px', overflowY: 'auto' }}>
           
           {activeMenu === 'Profile' && (
@@ -536,27 +559,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between', padding: '16px 0', borderBottom: `1px solid ${uiColors.border}` }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Compact table view</div>
-                    <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>Reduce row height in transaction list sheet rows</div>
-                  </div>
-                  <div onClick={() => setCompactTable(!compactTable)} style={{ width: '38px', height: '22px', borderRadius: '11px', background: compactTable ? uiColors.accentGreen : '#D3D1C7', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
-                    <div style={{ position: 'absolute', top: '3px', left: compactTable ? '19px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between', padding: '16px 0' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Hide balance by default</div>
-                    <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>Mask amount fields until explicitly tapped — privacy protection profile mode</div>
-                  </div>
-                  <div onClick={() => setHideBalance(!hideBalance)} style={{ width: '38px', height: '22px', borderRadius: '11px', background: hideBalance ? uiColors.accentGreen : '#D3D1C7', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
-                    <div style={{ position: 'absolute', top: '3px', left: hideBalance ? '19px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -614,56 +616,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
         </main>
 
-        <aside style={{ background: uiColors.white, borderLeft: `1px solid ${uiColors.border}`, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '28px', overflowY: 'auto' }}>
-          <div>
-            <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', marginBottom: '14px' }}>Your Stats</div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '14px' }}>
-                <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.6rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>18</div>
-                <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500, lineHeight: '1.3' }}>Transactions this month</div>
-              </div>
-              <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '14px' }}>
-                <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.6rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>₹7.7k</div>
-                <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500, lineHeight: '1.3' }}>Saved in June</div>
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '14px' }}>
-                <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.6rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>6</div>
-                <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500, lineHeight: '1.3' }}>Active subscriptions</div>
-              </div>
-              <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '14px' }}>
-                <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.6rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>3</div>
-                <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500, lineHeight: '1.3' }}>Goals in progress</div>
-              </div>
-            </div>
-
-            <div style={{ background: uiColors.bgLight, borderRadius: '12px', padding: '16px', width: '100%', boxSizing: 'border-box' }}>
-              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.8rem', fontWeight: 600, color: uiColors.tealDark, lineHeight: '1.1' }}>₹62,920</div>
-              <div style={{ fontSize: '10px', color: uiColors.textMuted, marginTop: '4px', fontWeight: 500 }}>Total tracked since joined</div>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', marginBottom: '12px' }}>Timeline Log History</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-              {[
-                { text: 'Security validation credentials synced perfectly', time: '2 days ago', dot: '#1D9E75' },
-                { text: 'Access token validated smoothly from client node', time: 'Today', dot: '#378ADD' },
-                { text: 'Spending limits configuration rewrites processed', time: '4 days ago', dot: '#EF9F27' }
-              ].map((act, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 0', borderBottom: i === 2 ? 'none' : '0.5px solid #F2F4F3' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: act.dot, flexShrink: 0, marginTop: '5px' }} />
-                  <div style={{ fontSize: '12px', color: '#364C4F', flex: 1, lineHeight: '1.4' }}>{act.text}</div>
-                  <div style={{ fontSize: '10px', color: '#B4B2A9', flexShrink: 0, marginTop: '1px' }}>{act.time}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </aside>
       </div>
 
     </div>

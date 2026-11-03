@@ -11,11 +11,15 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, monthlyLogPreference, monthlyLogCustomDate, monthlyLogLastDismissed } = req.body;
+    const { name, phone, institution, city, bio, monthlyLogPreference, monthlyLogCustomDate, monthlyLogLastDismissed } = req.body;
     const user = await User.findById(req.user.id);
     
     if (user) {
       user.name = name || user.name;
+      if (phone !== undefined) user.phone = phone;
+      if (institution !== undefined) user.institution = institution;
+      if (city !== undefined) user.city = city;
+      if (bio !== undefined) user.bio = bio;
       if (monthlyLogPreference !== undefined) user.monthlyLogPreference = monthlyLogPreference;
       if (monthlyLogCustomDate !== undefined) user.monthlyLogCustomDate = monthlyLogCustomDate;
       if (monthlyLogLastDismissed !== undefined) user.monthlyLogLastDismissed = monthlyLogLastDismissed;
@@ -25,6 +29,10 @@ exports.updateProfile = async (req, res) => {
         _id: updatedUser._id,
         name: updatedUser.name,
         email: updatedUser.email,
+        phone: updatedUser.phone,
+        institution: updatedUser.institution,
+        city: updatedUser.city,
+        bio: updatedUser.bio,
         monthlyLogPreference: updatedUser.monthlyLogPreference,
         monthlyLogCustomDate: updatedUser.monthlyLogCustomDate,
         monthlyLogLastDismissed: updatedUser.monthlyLogLastDismissed

@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQueryWithAuth } from '../../api/baseQuery';
 
 export const authApi = createApi({
@@ -24,9 +24,12 @@ forgotPassword: builder.mutation({
       query: () => ({ url: '/api/auth/logout', method: 'POST' }),
     }),
     updateProfile: builder.mutation({
-      query: (payload) => ({ url: '/api/users/update', method: 'PUT', body: payload }),
+      query: (payload) => ({ url: '/api/user/update', method: 'PUT', body: payload }),
+    }),
+    getProfile: builder.query({
+      query: () => ({ url: '/api/user/profile' }),
     }),
   }),
 });
 
-export const { useLoginMutation, useSignupMutation, useVerifyEmailMutation, useForgotPasswordMutation, useResetPasswordMutation, useUpdateProfileMutation, useLogoutMutation } = authApi;
+export const { useGetProfileQuery, useLoginMutation, useSignupMutation, useVerifyEmailMutation, useForgotPasswordMutation, useResetPasswordMutation, useUpdateProfileMutation, useLogoutMutation } = authApi;

@@ -49,6 +49,9 @@ exports.createGroup = async (req, res) => {
     }
 
     const cleanEmails = members.map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (req.user.email && cleanEmails.includes(req.user.email.toLowerCase())) {
+      return res.status(400).json({ message: "You can't invite yourself to a group." });
+    }
     const existingUsers = await User.find({ email: { $in: cleanEmails } });
     const existingEmails = existingUsers.map(u => u.email.toLowerCase());
     
@@ -59,12 +62,14 @@ exports.createGroup = async (req, res) => {
     
     const pendingInvites = cleanEmails.filter(email => !existingEmails.includes(email));
     const inviteToken = crypto.randomBytes(16).toString('hex');
+    const inviteTokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const newGroup = await Group.create({
       name: name.trim(),
       members: memberIds,
       pendingInvites,
       inviteToken,
+      inviteTokenExpires,
       expenses: [],
       activityLog: [{ text: (req.user.name || 'Someone') + ' created this group.' }]
     });
@@ -131,6 +136,7 @@ exports.addSharedExpense = async (req, res) => {
 
     if (!group.activityLog) group.activityLog = [];
     group.activityLog.push({ text: (req.user.name || 'Someone') + ' added "' + description.trim() + '" for ₹' + totalAmount });
+    if (group.activityLog.length > 50) group.activityLog = group.activityLog.slice(-50);
     
     await group.save();
     res.status(200).json(group);
@@ -148,6 +154,9 @@ exports.addMembersAfterFact = async (req, res) => {
     if (!group) return res.status(404).json({ message: 'Group context not found.' });
 
     const cleanEmails = emails.map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (req.user.email && cleanEmails.includes(req.user.email.toLowerCase())) {
+      return res.status(400).json({ message: "You can't invite yourself to a group." });
+    }
     const existingUsers = await User.find({ email: { $in: cleanEmails } });
     
     if (!group.activityLog) {
@@ -174,6 +183,7 @@ exports.addMembersAfterFact = async (req, res) => {
 
     });
 
+    if (group.activityLog.length > 50) group.activityLog = group.activityLog.slice(-50);
     await group.save();
     const updatedGroup = await Group.findById(group._id).populate('members', 'name email');
     res.status(200).json(updatedGroup);
@@ -198,6 +208,7 @@ exports.editGroupMetadata = async (req, res) => {
     }
     
     group.activityLog.push({ text: (req.user.name || 'Someone') + ' changed name from ' + oldName + ' to ' + group.name });
+    if (group.activityLog.length > 50) group.activityLog = group.activityLog.slice(-50);
     
     await group.save();
     res.status(200).json(group);
@@ -292,6 +303,10 @@ exports.joinGroupViaLink = async (req, res) => {
     if (!group) {
       return res.status(404).json({ message: 'Invite link is invalid or expired.' });
     }
+    
+    if (group.inviteTokenExpires && Date.now() > new Date(group.inviteTokenExpires).getTime()) {
+      return res.status(400).json({ message: 'Invite link has expired.' });
+    }
 
     const userEmail = req.user.email.toLowerCase();
     const userId = req.user.id;
@@ -304,6 +319,7 @@ exports.joinGroupViaLink = async (req, res) => {
       group.members.push(userId);
       if (!group.activityLog) group.activityLog = [];
       group.activityLog.push({ text: (req.user.name || 'Someone') + ' joined via link.' });
+      if (group.activityLog.length > 50) group.activityLog = group.activityLog.slice(-50);
       await group.save();
     }
 

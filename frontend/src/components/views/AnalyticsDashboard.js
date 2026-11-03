@@ -22,7 +22,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
   }
 
   const totalExpenses = summary?.totalExpenses || 0;
-  const budgetLimit = categories.reduce((sum, cat) => sum + (Number(cat.monthlyBudget) || 0), 0) || 20000;
+  const budgetLimit = categories.reduce((sum, cat) => sum + (Number(cat.monthlyBudget) || 0), 0);
   const rawPercentage = budgetLimit > 0 ? (totalExpenses / budgetLimit) * 100 : 0;
   const usedPercentage = Math.min(Math.round(rawPercentage), 100);
 
@@ -128,7 +128,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
                   ₹{totalExpenses.toLocaleString('en-IN')}
                 </div>
                 <div style={{ fontSize: `${12 * fontSizeMultiplier}px`, color: 'rgba(255,255,255,0.7)', marginTop: '8px' }}>
-                  of ₹{budgetLimit.toLocaleString('en-IN')} monthly target limit
+                  {budgetLimit > 0 ? `of ₹${budgetLimit.toLocaleString('en-IN')} monthly target limit` : 'No monthly budget set yet'}
                 </div>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '20px', padding: '6px 14px', fontSize: `${12 * fontSizeMultiplier}px`, color: '#fff', fontWeight: 600, whiteSpace: 'nowrap', backdropFilter: 'blur(10px)' }}>
@@ -138,7 +138,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
 
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: `${11 * fontSizeMultiplier}px`, color: 'rgba(255,255,255,0.8)', marginBottom: '8px', fontWeight: 500 }}>
-                <span>₹0</span><span>Budget Limit ₹{(budgetLimit/1000)}k</span>
+                <span>₹0</span><span>{budgetLimit > 0 ? `Budget Limit ₹${budgetLimit/1000}k` : 'No budget'}</span>
               </div>
               <div style={{ height: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', borderRadius: '4px', width: `${usedPercentage}%`, background: '#fff', boxShadow: '0 0 10px rgba(255,255,255,0.5)' }} />
@@ -262,7 +262,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
             <div style={{ fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: colors.tealPrimary }}>Smart Intelligence</div>
           </div>
           <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textPrimary, lineHeight: '1.6', fontWeight: 500 }}>
-            {intelligence?.insights?.[0]?.message || 'Reviewing user burn curves. No irregular trends spotted across current ledger rows.'}
+            {intelligence?.insights?.[0]?.message || 'Add transactions and budgets to see insights.'}
           </div>
         </div>
       </aside>

@@ -3,14 +3,14 @@ const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail');
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
 const sendTokenCookie = (user, statusCode, res, message, extraData = {}) => {
   const token = generateToken(user._id);
 
   const cookieOptions = {
-    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 
     httpOnly: true, 
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict'

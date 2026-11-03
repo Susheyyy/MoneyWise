@@ -5,6 +5,7 @@ const groupSchema = new mongoose.Schema({
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   pendingInvites: [{ type: String }],
   inviteToken: { type: String },
+  inviteTokenExpires: { type: Date },
   expenses: [{
     description: { type: String, required: true },
     amount: { type: Number, required: true },

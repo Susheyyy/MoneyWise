@@ -4,6 +4,77 @@ const ThemeContext = createContext();
 
 export const useTheme = () => useContext(ThemeContext);
 
+// Palette from the MoneyWise design spec (section 2 = light, section 3 = dark).
+const PALETTE = {
+  Light: {
+    mainBackground:      '#FFFFFF',
+    secondaryBackground: '#F2F5F5',
+    cardBackground:      '#FFFFFF',
+    primaryText:         '#1D292B',
+    secondaryText:       '#647477',
+    primaryAccent:       '#628B91',
+    secondaryAccent:     '#85BAC2',
+    borders:             '#DCE4E5',
+    sidebar:             '#1D292B',
+    success:             '#2A7352',
+    danger:              '#C0392B',
+    warning:             '#B45309',
+  },
+  Dark: {
+    mainBackground:      '#1D292B',
+    secondaryBackground: '#243638',
+    cardBackground:      '#2C4144',
+    primaryText:         '#F2F5F5',
+    secondaryText:       '#A7A7A9',
+    primaryAccent:       '#85BAC2',
+    secondaryAccent:     '#628B91',
+    borders:             '#405558',
+    sidebar:             '#243638',
+    success:             '#7BC6A4',
+    danger:              '#FF8A80',
+    warning:             '#F0B453',
+  },
+};
+
+const buildColors = (p, isDark) => ({
+  background:   p.mainBackground,
+  cardBg:       p.cardBackground,
+  surface:      p.cardBackground,
+  surfaceAlt:   p.secondaryBackground,
+  white:        p.cardBackground,
+  bgLight:      p.secondaryBackground,
+
+  textDark:     p.primaryText,
+  textPrimary:  p.primaryText,
+  textMuted:    p.secondaryText,
+  textSubtle:   p.secondaryText,
+
+  border:       p.borders,
+  borderStrong: p.borders,
+
+  sidebar:      p.sidebar,
+
+  accent:       p.primaryAccent,
+  green:        p.primaryAccent,
+  tealPrimary:  p.primaryAccent,
+  tealDark:     p.secondaryAccent,
+  successText:  p.success,
+
+  danger:       p.danger,
+  red:          p.danger,
+  warning:      p.warning,
+  amber:        p.warning,
+
+  successBg:    isDark ? 'rgba(123, 198, 164, 0.14)' : '#E6F4EE',
+  dangerBg:     isDark ? 'rgba(229, 115, 107, 0.14)' : '#FDECEA',
+  warningBg:    isDark ? 'rgba(240, 180, 83, 0.14)' : '#FEF3C7',
+
+  redText:      p.danger,
+  redBg:        isDark ? 'rgba(229, 115, 107, 0.14)' : '#FDECEA',
+  greenText:    p.success,
+  greenBg:      isDark ? 'rgba(123, 198, 164, 0.14)' : '#E6F4EE',
+});
+
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('appTheme') || 'Light';
@@ -23,98 +94,8 @@ export const ThemeProvider = ({ children }) => {
     document.body.setAttribute('data-font-size', fontSize);
   }, [fontSize]);
 
-  const getColors = () => {
-    if (theme === 'Dark') {
-      return {
-        // Base surfaces
-        background:  '#111F21',
-        cardBg:      '#1A2E31',
-        surface:     '#1A2E31',
-        surfaceAlt:  '#182A2C',
-        white:       '#1A2E31',
-        bgLight:     '#182A2C',
-
-        // Text
-        textDark:    '#FFFFFF',
-        textPrimary: '#E8F0F1',
-        textMuted:   '#7FA8AB',
-        textSubtle:  '#5A8285',
-
-        // Borders
-        border:      '#2A4548',
-        borderStrong:'#3A5558',
-
-        // Brand / Accent
-        accent:      '#22C55E',
-        green:       '#22C55E',
-        successText: '#22C55E',
-        tealPrimary: '#38A3A5',
-        tealDark:    '#4EBFC2',
-
-        // Semantic
-        danger:      '#EF4444',
-        red:         '#EF4444',
-        warning:     '#F59E0B',
-        amber:       '#F59E0B',
-
-        // Semantic backgrounds
-        successBg:   'rgba(34, 197, 94, 0.12)',
-        dangerBg:    'rgba(239, 68, 68, 0.12)',
-        warningBg:   'rgba(245, 158, 11, 0.12)',
-
-
-        redText:     '#EF4444',
-        redBg:       'rgba(239, 68, 68, 0.12)',
-        greenText:   '#22C55E',
-        greenBg:     'rgba(34, 197, 94, 0.12)',
-      };
-    }
-
-    // Light theme
-    return {
-      // Base surfaces
-      background:  '#FFFFFF',
-      cardBg:      '#FFFFFF',
-      surface:     '#FFFFFF',
-      surfaceAlt:  '#F8FAFA',
-      white:       '#FFFFFF',
-      bgLight:     '#F4F7F7',
-
-      // Text
-      textDark:    '#1E3336',
-      textPrimary: '#374C4F',
-      textMuted:   '#6B8B8E',
-      textSubtle:  '#9BB5B8',
-
-      // Borders
-      border:      '#E0E8E8',
-      borderStrong:'#C8D8D8',
-
-      // Brand / Accent
-      accent:      '#0F6E56',
-      green:       '#0F6E56',
-      successText: '#0F6E56',
-      tealPrimary: '#2B5854',
-      tealDark:    '#1E3336',
-
-      // Semantic
-      danger:      '#C0392B',
-      red:         '#C0392B',
-      warning:     '#B45309',
-      amber:       '#B45309',
-
-      // Semantic backgrounds
-      successBg:   '#E6F7EF',
-      dangerBg:    '#FDECEA',
-      warningBg:   '#FEF3C7',
-
-      // Legacy aliases (keep for backward compat)
-      redText:     '#C0392B',
-      redBg:       '#FDECEA',
-      greenText:   '#0F6E56',
-      greenBg:     '#E6F7EF',
-    };
-  };
+  const isDark = theme === 'Dark';
+  const getColors = () => buildColors(PALETTE[isDark ? 'Dark' : 'Light'], isDark);
 
   const getFontSizeMultiplier = () => {
     switch (fontSize) {

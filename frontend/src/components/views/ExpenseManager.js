@@ -45,7 +45,6 @@ const ExpenseManager = () => {
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  // Valid payment modes matching the backend Transaction schema enum
   const paymentModes = ['UPI', 'Cash', 'Card', 'NetBanking'];
   const preDefinedTags = ['food', 'hostel', 'shared', 'recurring', 'college', 'online'];
 
@@ -68,10 +67,13 @@ const ExpenseManager = () => {
     const lower = val.toLowerCase();
     let foundMatch = false;
 
-    for (const [key, cat] of Object.entries(autoRules)) {
+    for (const [key, catName] of Object.entries(autoRules)) {
       if (lower.includes(key)) {
-        setAutoCatSuggestion(cat);
-        setCategory(cat);
+        setAutoCatSuggestion(catName);
+        const matchingCat = dbCategories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+        if (matchingCat) {
+          setCategoryId(matchingCat._id);
+        }
         foundMatch = true;
         break;
       }

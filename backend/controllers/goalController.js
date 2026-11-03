@@ -64,6 +64,10 @@ exports.addContribution = async (req, res) => {
     const { amount, walletId, walletName, note } = req.body;
     const contributionAmount = Number(amount);
 
+    if (!contributionAmount || contributionAmount <= 0) {
+      throw new Error('Contribution amount must be greater than zero');
+    }
+
     const goal = await Goal.findOne({ _id: req.params.id, user: req.user.id }).session(session);
     if (!goal) throw new Error('Goal not found');
 

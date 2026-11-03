@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ClickSpark from './ClickSpark';
 import RotatingText from './RotatingText';
 
 const CSS = `
@@ -745,8 +744,6 @@ const LandingPage = () => {
     <div style={{fontFamily:"'Montserrat',sans-serif",background:'#fff',color:'#1E3336',minHeight:'100vh',overflowX:'hidden',position:'relative'}}>
       <style>{CSS}</style>
 
-      <ClickSpark sparkColor="#1D9E75" sparkSize={9} sparkRadius={18} sparkCount={8} duration={500}>
-
       {}
       <nav className={`nav${navScrolled?' scrolled':''}`}>
         <div className="nav-brand" onClick={() => window.scrollTo({top:0,behavior:'smooth'})}>MONEYWISE</div>
@@ -997,7 +994,6 @@ const LandingPage = () => {
         <div className="foot-copy">© 2026 MoneyWise</div>
       </footer>
 
-      </ClickSpark>
     </div>
   );
 };
