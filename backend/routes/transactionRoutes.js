@@ -4,6 +4,7 @@ const {
   getTransactions, 
   createTransaction, 
   getAnalyticsSummary,
+  getLedgerTotals,
   updateTransaction,
   deleteTransaction,
   getMonthlySummary,
@@ -15,6 +16,7 @@ const { protect } = require('../middleware/authMiddleware');
 router.use(protect);
 
 router.get('/stats/summary', getAnalyticsSummary);
+router.get('/stats/ledger', getLedgerTotals);
 router.get('/stats/monthly', getMonthlySummary);
 router.get('/stats/category', getCategoryBreakdown);
 router.get('/stats/wallet', getWalletDistribution);

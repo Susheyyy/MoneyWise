@@ -15,8 +15,22 @@ export const groupApi = createApi({
       invalidatesTags: ['Group'],
     }),
     addSharedExpense: builder.mutation({
-      query: ({ groupId, ...expenseData }) => ({ url: `/api/groups/${groupId}/expense`, method: 'POST', body: expenseData }),
+      query: ({ groupId, idempotencyKey, ...expenseData }) => ({
+        url: `/api/groups/${groupId}/expense`, method: 'POST', body: expenseData,
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
       invalidatesTags: ['Group', 'Settlement'],
+    }),
+    getGroupExpenses: builder.query({
+      query: ({ groupId, offset }) => ({ url: `/api/groups/${groupId}/expense`, params: { offset } }),
+      providesTags: ['Group'],
+    }),
+    recordRepayment: builder.mutation({
+      query: ({ groupId, idempotencyKey, ...body }) => ({
+        url: `/api/groups/${groupId}/settle`, method: 'POST', body,
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+      invalidatesTags: ['Settlement'],
     }),
    getSettlementSummary: builder.query({
       query: (groupId) => `/api/groups/${groupId}/settle`,
@@ -46,6 +60,8 @@ export const {
   useGetGroupsQuery,
   useCreateGroupMutation,
   useAddSharedExpenseMutation,
+  useGetGroupExpensesQuery,
+  useRecordRepaymentMutation,
   useGetSettlementSummaryQuery,
   useJoinGroupViaLinkMutation,
   useAddMembersAfterFactMutation,

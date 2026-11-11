@@ -1,3 +1,4 @@
+import { useRetryKey } from '../../utils/useRetryKey';
 import React, { useState } from 'react';
 import { useGetWalletsQuery } from '../../features/wallets/walletApi'; 
 import {
@@ -15,7 +16,8 @@ const SavingsGoals = () => {
   const { data: dbGoals = [], isLoading: goalsLoading } = useGetGoalsQuery();
   const { data: dbWallets = [] } = useGetWalletsQuery();
   const [createGoal] = useCreateGoalMutation();
-  const [addContribution] = useAddContributionMutation();
+  const [addContribution, { isLoading: isContributing }] = useAddContributionMutation();
+  const [contributionKey, clearContributionKey] = useRetryKey();
   const [deleteGoal, { isLoading: isArchiving }] = useDeleteGoalMutation();
 
   const [activeTab, setActiveTab] = useState('all');
@@ -107,19 +109,22 @@ const handleCreateGoal = async (e) => {
   };
   const handleAddContribution = async (e) => {
     e.preventDefault();
+    if (isContributing) return;
     if (!selectedWalletId) {
       triggerToast('Please pick a functional funding account.');
       return;
     }
     try {
       const targetWallet = dbWallets.find(w => w._id === selectedWalletId);
-      const res = await addContribution({
+      const contribution = {
         goalId: selectedGoal._id,
         amount: Number(contributionAmount),
         walletId: selectedWalletId,
         walletName: targetWallet?.name || 'Manual',
         note: contributionNote
-      }).unwrap();
+      };
+      const res = await addContribution({ ...contribution, idempotencyKey: contributionKey(contribution) }).unwrap();
+      clearContributionKey();
 
       triggerToast(`Deposited ₹${Number(contributionAmount).toLocaleString('en-IN')} via ${targetWallet?.name}!`);
       setIsAddFundsModalOpen(false);
@@ -371,11 +376,11 @@ const handleCreateGoal = async (e) => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', color: uiColors.textMuted, marginBottom: '5px' }}>Target Amount</label>
-                  <input type="number" placeholder="₹0" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} required style={{ width: '100%', padding: '11px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '14px', fontWeight: 600 }} />
+                  <input type="number" min="0.01" step="0.01" placeholder="₹0" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} required style={{ width: '100%', padding: '11px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '14px', fontWeight: 600 }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', color: uiColors.textMuted, marginBottom: '5px' }}>Monthly Targets</label>
-                  <input type="number" placeholder="₹0" value={monthlySavings} onChange={(e) => setMonthlySavings(e.target.value)} required style={{ width: '100%', padding: '11px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '14px', fontWeight: 600 }} />
+                  <input type="number" min="0" step="0.01" placeholder="₹0" value={monthlySavings} onChange={(e) => setMonthlySavings(e.target.value)} required style={{ width: '100%', padding: '11px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '14px', fontWeight: 600 }} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -436,7 +441,7 @@ const handleCreateGoal = async (e) => {
                 <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: uiColors.textMuted, marginBottom: '6px' }}>AMOUNT</label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <span style={{ position: 'absolute', left: '16px', fontSize: '1.8rem', fontFamily: "'Oswald', sans-serif", color: uiColors.tealDark }}>₹</span>
-                  <input type="number" placeholder="0" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} required style={{ width: '100%', padding: '14px 14px 14px 34px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '1.8rem', fontFamily: "'Oswald', sans-serif', fontWeight: 500" }} />
+                  <input type="number" min="0.01" step="0.01" placeholder="0" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} required style={{ width: '100%', padding: '14px 14px 14px 34px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '1.8rem', fontFamily: "'Oswald', sans-serif', fontWeight: 500" }} />
                 </div>
               </div>
 

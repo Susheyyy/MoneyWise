@@ -27,10 +27,11 @@ export const goalApi = createApi({
       invalidatesTags: ['Goal'],
     }),
     addContribution: builder.mutation({
-      query: ({ goalId, ...payload }) => ({
+      query: ({ goalId, idempotencyKey, ...payload }) => ({
         url: `/api/goals/${goalId}/contribution`,
         method: 'POST',
         body: payload,
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
       }),
       // Invalidate wallets too so balance refreshes after deduction
       invalidatesTags: ['Goal', 'Summary', 'Wallet'],

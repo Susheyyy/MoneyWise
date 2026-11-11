@@ -1,6 +1,8 @@
+import { useRetryKey } from '../../utils/useRetryKey';
 import React, { useState } from 'react';
 import {
   useGetTransactionsQuery,
+  useGetLedgerTotalsQuery,
   useAddTransactionMutation,
   useUpdateTransactionMutation,
   useDeleteTransactionMutation
@@ -11,9 +13,11 @@ import { useTheme } from '../../context/ThemeContext';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { downloadTransactionExport } from '../../utils/downloadTransactionExport';
 
+const PAGE_SIZE = 50;
+
 const ExpenseManager = () => {
 
-  const { data: expensesData = [] } = useGetTransactionsQuery();
+  const [transactionKey, clearTransactionKey] = useRetryKey();
   const [addTransaction, { isLoading: isAdding }] = useAddTransactionMutation();
   const [updateTransaction, { isLoading: isUpdating }] = useUpdateTransactionMutation();
   const [deleteTransaction, { isLoading: isDeleting }] = useDeleteTransactionMutation();
@@ -27,8 +31,19 @@ const ExpenseManager = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
   const [selectedWalletFilter, setSelectedWalletFilter] = useState('');
   
+  const [page, setPage] = useState(0);
+  const { currentData: rows = [], isFetching, isError } = useGetTransactionsQuery({
+    limit: PAGE_SIZE + 1,
+    offset: page * PAGE_SIZE,
+    type: activeTab === 'all' ? undefined : activeTab,
+    search: searchQuery.trim() || undefined,
+    category: selectedCategoryFilter || undefined,
+    wallet: selectedWalletFilter || undefined,
+  });
+  const filteredTransactions = rows.slice(0, PAGE_SIZE);
+  const { data: totals } = useGetLedgerTotalsQuery();
   const [selectedTxnId, setSelectedTxnId] = useState(null);
-  const selectedTxn = expensesData.find(txn => txn._id === selectedTxnId);
+  const selectedTxn = filteredTransactions.find(txn => txn._id === selectedTxnId);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingTxnId, setEditingTxnId] = useState(null);
@@ -170,7 +185,8 @@ const ExpenseManager = () => {
       if (isEditMode) {
         await updateTransaction({ id: editingTxnId, ...transaction }).unwrap();
       } else {
-        await addTransaction(transaction).unwrap();
+        await addTransaction({ ...transaction, idempotencyKey: transactionKey(transaction) }).unwrap();
+        clearTransactionKey();
       }
       showNotification(isEditMode ? 'Transaction updated.' : 'Transaction added.');
 
@@ -190,6 +206,7 @@ const ExpenseManager = () => {
       showNotification('Transaction deleted successfully.', 'success');
       setIsPanelOpen(false);
       setSelectedTxnId(null);
+      if (filteredTransactions.length === 1 && page > 0) setPage(page - 1);
     } catch (err) {
       showNotification(getErrorMessage(err, 'Error deleting transaction.'), 'error');
     }
@@ -208,29 +225,7 @@ const ExpenseManager = () => {
     }
   };
 
-  const totalIncome = expensesData.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const totalExpenses = expensesData.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const netSavings = totalIncome - totalExpenses;
-  const largestSpendItem = expensesData.filter(t => t.type === 'expense').sort((a, b) => b.amount - a.amount)[0];
-
-  const filteredTransactions = expensesData.filter(t => {
-    if (activeTab === 'expense' && t.type !== 'expense') return false;
-    if (activeTab === 'income' && t.type !== 'income') return false;
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchDesc = t.description?.toLowerCase().includes(query);
-      const matchNotes = t.notes?.toLowerCase().includes(query);
-      if (!matchDesc && !matchNotes) return false;
-    }
-
-    // category is a populated object { _id, name } — compare by _id
-    if (selectedCategoryFilter && t.category?._id !== selectedCategoryFilter) return false;
-    // wallet is a populated object — compare by _id
-    if (selectedWalletFilter && t.wallet?._id !== selectedWalletFilter) return false;
-
-    return true;
-  });
+  const { totalIncome = 0, totalExpenses = 0, netSavings = 0, expenseCount = 0, largestSpend: largestSpendItem } = totals || {};
 
   return (
     <div style={{ background: colors.background, minHeight: '100%', display: 'flex', flexDirection: 'column', fontFamily: "'Montserrat', sans-serif" }}>
@@ -245,9 +240,9 @@ const ExpenseManager = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 28px', borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.white, position: 'sticky', top: '60px', zIndex: 20, gap: '12px', flexWrap: 'wrap' }}>
         {/* Tab switcher */}
         <div style={{ display: 'flex', gap: '4px', background: colors.bgLight, padding: '3px', borderRadius: '10px', border: `1px solid ${colors.border}` }}>
-          <button onClick={() => setActiveTab('all')} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'all' ? colors.white : 'transparent', color: activeTab === 'all' ? colors.tealDark : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'all' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>All</button>
-          <button onClick={() => setActiveTab('expense')} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'expense' ? colors.white : 'transparent', color: activeTab === 'expense' ? colors.red : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'expense' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>Expenses</button>
-          <button onClick={() => setActiveTab('income')} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'income' ? colors.white : 'transparent', color: activeTab === 'income' ? colors.green : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'income' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>Income</button>
+          <button onClick={() => { setActiveTab('all'); setPage(0); setSelectedTxnId(null); setIsPanelOpen(false); }} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'all' ? colors.white : 'transparent', color: activeTab === 'all' ? colors.tealDark : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'all' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>All</button>
+          <button onClick={() => { setActiveTab('expense'); setPage(0); setSelectedTxnId(null); setIsPanelOpen(false); }} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'expense' ? colors.white : 'transparent', color: activeTab === 'expense' ? colors.red : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'expense' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>Expenses</button>
+          <button onClick={() => { setActiveTab('income'); setPage(0); setSelectedTxnId(null); setIsPanelOpen(false); }} style={{ padding: '6px 16px', borderRadius: '7px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, border: 'none', cursor: 'pointer', background: activeTab === 'income' ? colors.white : 'transparent', color: activeTab === 'income' ? colors.green : colors.textMuted, transition: 'all 0.2s', boxShadow: activeTab === 'income' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', fontFamily: 'inherit' }}>Income</button>
         </div>
 
         {/* Action buttons */}
@@ -271,7 +266,7 @@ const ExpenseManager = () => {
             <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Total expenses</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.red }}>₹{totalExpenses.toLocaleString('en-IN')}</div>
-              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>{expensesData.filter(t => t.type === 'expense').length} expenses</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>{expenseCount} expenses</div>
             </div>
 
             <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
@@ -289,23 +284,23 @@ const ExpenseManager = () => {
 
           <div style={{ background: colors.white, borderBottom: `1px solid ${colors.border}`, padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: colors.bgLight, borderRadius: '10px', padding: '8px 14px', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, flex: 1, maxWidth: '280px', border: `1px solid ${colors.border}` }}>
-              <input type="text" placeholder="Search keywords..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textDark, fontFamily: 'inherit', width: '100%' }} />
+              <input type="text" placeholder="Search keywords..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(0); setSelectedTxnId(null); setIsPanelOpen(false); }} style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textDark, fontFamily: 'inherit', width: '100%' }} />
             </div>
 
             <div style={{ width: '1px', height: '24px', background: colors.border, margin: '0 4px' }}></div>
 
-            <select value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, border: `1px solid ${selectedCategoryFilter ? colors.tealPrimary : colors.border}`, background: selectedCategoryFilter ? `${colors.tealPrimary}1A` : colors.white, color: selectedCategoryFilter ? colors.tealDark : colors.textPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+            <select value={selectedCategoryFilter} onChange={(e) => { setSelectedCategoryFilter(e.target.value); setPage(0); setSelectedTxnId(null); setIsPanelOpen(false); }} style={{ padding: '8px 14px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, border: `1px solid ${selectedCategoryFilter ? colors.tealPrimary : colors.border}`, background: selectedCategoryFilter ? `${colors.tealPrimary}1A` : colors.white, color: selectedCategoryFilter ? colors.tealDark : colors.textPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
               <option value="">Category (All)</option>
               {dbCategories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
             </select>
 
-            <select value={selectedWalletFilter} onChange={(e) => setSelectedWalletFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, border: `1px solid ${selectedWalletFilter ? colors.tealPrimary : colors.border}`, background: selectedWalletFilter ? `${colors.tealPrimary}1A` : colors.white, color: selectedWalletFilter ? colors.tealDark : colors.textPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+            <select value={selectedWalletFilter} onChange={(e) => { setSelectedWalletFilter(e.target.value); setPage(0); setSelectedTxnId(null); setIsPanelOpen(false); }} style={{ padding: '8px 14px', borderRadius: '20px', fontSize: `${12 * fontSizeMultiplier}px`, border: `1px solid ${selectedWalletFilter ? colors.tealPrimary : colors.border}`, background: selectedWalletFilter ? `${colors.tealPrimary}1A` : colors.white, color: selectedWalletFilter ? colors.tealDark : colors.textPrimary, fontWeight: 500, outline: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
               <option value="">Wallet (All)</option>
               {dbWallets.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
             </select>
 
             <div style={{ marginLeft: 'auto', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, whiteSpace: 'nowrap', fontWeight: 500 }}>
-              {filteredTransactions.length} results evaluated
+              {isFetching ? 'Loading transactions…' : isError ? 'Could not load transactions' : `Page ${page + 1}`}
             </div>
           </div>
 
@@ -368,6 +363,10 @@ const ExpenseManager = () => {
                   })}
                 </tbody>
               </table>
+              <div style={{ display: 'flex', gap: '12px', padding: '16px' }}>
+                <button type="button" disabled={page === 0 || isFetching} onClick={() => { setPage(page - 1); setIsPanelOpen(false); }}>Previous</button>
+                <button type="button" disabled={rows.length <= PAGE_SIZE || isFetching} onClick={() => { setPage(page + 1); setIsPanelOpen(false); }}>Next</button>
+              </div>
             </div>
           </div>
 
@@ -449,7 +448,7 @@ const ExpenseManager = () => {
 
               <div>
                 <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Transaction value</label>
-                <input type="number" step="any" placeholder="₹0" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ width: '100%', padding: '16px 20px', border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${1.8 * fontSizeMultiplier}rem`, color: colors.tealDark, outline: 'none', fontFamily: "'Oswald', sans-serif", fontWeight: 600, background: colors.white, boxSizing: 'border-box', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.02)' }} />
+                <input type="number" min="0.01" step="0.01" placeholder="₹0" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ width: '100%', padding: '16px 20px', border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${1.8 * fontSizeMultiplier}rem`, color: colors.tealDark, outline: 'none', fontFamily: "'Oswald', sans-serif", fontWeight: 600, background: colors.white, boxSizing: 'border-box', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.02)' }} />
               </div>
 
               <div>

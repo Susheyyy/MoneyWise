@@ -10,6 +10,8 @@ const {
   editGroupMetadata,
   removeGroupMatrix,
   getSettlementSummary,
+  recordRepayment,
+  getGroupExpenses,
   joinGroupViaLink
 } = require('../controllers/groupController');
 
@@ -24,8 +26,8 @@ router.route('/:id')
   .delete(removeGroupMatrix);
 
 router.route('/:id/members').post(addMembersAfterFact);
-router.route('/:id/expense').post(addSharedExpense);
-router.route('/:id/settle').get(getSettlementSummary);
+router.route('/:id/expense').get(getGroupExpenses).post(addSharedExpense);
+router.route('/:id/settle').get(getSettlementSummary).post(recordRepayment);
 router.route('/join/:token').post(joinGroupViaLink);
 
 module.exports = router;

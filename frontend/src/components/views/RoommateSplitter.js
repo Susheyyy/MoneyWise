@@ -1,7 +1,10 @@
+import { useRetryKey } from '../../utils/useRetryKey';
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import {
   useGetGroupsQuery,
+  useGetGroupExpensesQuery,
+  useRecordRepaymentMutation,
   useCreateGroupMutation,
   useAddSharedExpenseMutation,
   useGetSettlementSummaryQuery,
@@ -18,12 +21,20 @@ const RoommateSplitter = () => {
   const { data: groups = [], refetch } = useGetGroupsQuery();
   
   const [createGroup] = useCreateGroupMutation();
-  const [addExpense] = useAddSharedExpenseMutation();
+  const [addExpense, { isLoading: isAddingExpense }] = useAddSharedExpenseMutation();
+  const [recordRepayment, { isLoading: isRecording }] = useRecordRepaymentMutation();
+  const [expenseKey, clearExpenseKey] = useRetryKey();
+  const [repaymentKey, clearRepaymentKey] = useRetryKey();
   const [addMembersAfterFact] = useAddMembersAfterFactMutation();
   const [editGroupMetadata] = useEditGroupMetadataMutation();
   const [removeGroupMatrix] = useRemoveGroupMatrixMutation();
 
   const [activeGroupId, setActiveGroupId] = useState('');
+  const [expensePage, setExpensePage] = useState(0);
+  const { currentData: groupExpenses = [], isFetching: expensesLoading, isError: expensesError } = useGetGroupExpensesQuery(
+    { groupId: activeGroupId, offset: expensePage * 20 }, { skip: !activeGroupId }
+  );
+  useEffect(() => setExpensePage(0), [activeGroupId]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [splitMode, setSplitMode] = useState('equal');
   
@@ -163,7 +174,7 @@ const RoommateSplitter = () => {
   const handleConfirmedDeleteGroup = async () => {
     try {
       await removeGroupMatrix(activeGroupId).unwrap();
-      showNotification('Group dismantled cleanly.', 'success');
+      showNotification('Group archived.', 'success');
       setShowEditModal(false);
       setIsDeleteConfirming(false);
       setActiveGroupId('');
@@ -175,7 +186,7 @@ const RoommateSplitter = () => {
 
   const handleExpenseSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !amount) return;
+    if (isAddingExpense || !title.trim() || !amount) return;
 
     if (selectedParticipants.length === 0) {
       showNotification('Select at least one participant.', 'error');
@@ -207,13 +218,16 @@ const RoommateSplitter = () => {
     }
 
     try {
-      await addExpense({ 
+      const expense = {
         groupId: activeGroupId, 
         description: title.trim(), 
         amount: Number(amount), 
         splitMode, 
-        splitWith: splitPayload 
-      }).unwrap();
+        splitWith: splitPayload
+      };
+      await addExpense({ ...expense, idempotencyKey: expenseKey(expense) }).unwrap();
+      clearExpenseKey();
+      setExpensePage(0);
       
       showNotification('Shared bill logged.', 'success');
       setTitle('');
@@ -228,6 +242,25 @@ const RoommateSplitter = () => {
   };
 
   const getInitials = (name = '') => name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  const handleRecordRepayment = async path => {
+    if (isRecording) return;
+    const received = window.prompt(`How much did you receive from ${path.from} (in ₹)?`, String(path.amount));
+    if (received === null) return;
+    const amount = Number(received);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showNotification('Enter a positive repayment amount.', 'error');
+      return;
+    }
+    const repayment = { groupId: activeGroupId, payer: path.fromId, amount };
+    try {
+      await recordRepayment({ ...repayment, idempotencyKey: repaymentKey(repayment) }).unwrap();
+      clearRepaymentKey();
+      showNotification('Repayment recorded.');
+    } catch (err) {
+      showNotification(getErrorMessage(err, 'Could not record the repayment.'), 'error');
+    }
+  };
+
   const userNetGlobal = summary?.netBalances?.[currentUser?._id] || 0;
 
   return (
@@ -324,15 +357,15 @@ const RoommateSplitter = () => {
                   <button type="button" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/join-group/${currentGroup.inviteToken}`); showNotification('Invite link copied to clipboard.', 'success'); setShowEditModal(false); }} style={{ width: '100%', padding: '12px', background: uiColors.bgMain, border: `1px solid ${uiColors.border}`, color: uiColors.tealPrimary, borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>Copy Invitation Link URL</button>
                 </div>
                 <div style={{ height: '1px', backgroundColor: uiColors.border, marginTop: '4px' }} />
-                <button type="button" onClick={() => setIsDeleteConfirming(true)} style={{ width: '100%', padding: '12px', background: 'rgba(163,45,45,0.05)', color: uiColors.redText, border: `1px solid rgba(163,45,45,0.15)`, borderRadius: '8px', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', cursor: 'pointer' }}>Delete Group Permanently</button>
+                {currentGroup.owner === currentUser?._id && <button type="button" onClick={() => setIsDeleteConfirming(true)} style={{ width: '100%', padding: '12px', background: 'rgba(163,45,45,0.05)', color: uiColors.redText, border: `1px solid rgba(163,45,45,0.15)`, borderRadius: '8px', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', cursor: 'pointer' }}>Archive group</button>}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center', padding: '10px 0' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: uiColors.tealPrimary }}>Dissolve group workspace?</div>
-                <div style={{ fontSize: '11px', color: uiColors.textMuted, lineHeight: '1.5' }}>This action cannot be undone and will erase all recorded expense balances.</div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: uiColors.tealPrimary }}>Archive this group?</div>
+                <div style={{ fontSize: '11px', color: uiColors.textMuted, lineHeight: '1.5' }}>The group will be hidden and its expense and repayment records will be retained.</div>
                 <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                   <button onClick={() => setIsDeleteConfirming(false)} style={{ flex: 1, padding: '12px', background: uiColors.bgMain, color: uiColors.tealPrimary, border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={handleConfirmedDeleteGroup} style={{ flex: 1, padding: '12px', background: uiColors.redText, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Confirm Delete</button>
+                  <button onClick={handleConfirmedDeleteGroup} style={{ flex: 1, padding: '12px', background: uiColors.redText, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>Archive group</button>
                 </div>
               </div>
             )}
@@ -400,7 +433,7 @@ const RoommateSplitter = () => {
               <div>
                 <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#5DCAA5', fontWeight: 700, letterSpacing: '1.5px' }}>{currentGroup.members?.length} {currentGroup.members?.length === 1 ? 'MEMBER' : 'MEMBERS'}</span>
                 <h1 style={{ fontFamily: "'Oswald', sans-serif", fontSize: '2.4rem', fontWeight: 500, color: '#ffffff', textAlign: 'left', margin: '6px 0 0 0', textTransform: 'uppercase' }}>{currentGroup.name}</h1>
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', marginTop: '8px', fontWeight: 500 }}>₹{(currentGroup.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0).toLocaleString()} total spent</div>
+                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', marginTop: '8px', fontWeight: 500 }}>₹{(summary.totalSpent || 0).toLocaleString()} total spent</div>
                 <div style={{ display: 'flex', gap: '4px', marginTop: '20px' }}>
                   {currentGroup.members?.map((m, idx) => (
                     <div key={m._id} title={m.name} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: uiColors.avatarBg[idx % 5], border: '2px solid #1D292B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#1D292B' }}>{getInitials(m.name)}</div>
@@ -426,7 +459,7 @@ const RoommateSplitter = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {currentGroup.expenses?.map((exp, idx) => (
+              {groupExpenses.slice(0, 20).map((exp, idx) => (
                 <div key={idx} style={{ background: '#fff', borderRadius: '16px', padding: '20px', border: `1px solid ${uiColors.border}`, display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
@@ -439,6 +472,11 @@ const RoommateSplitter = () => {
                   </div>
                 </div>
               ))}
+              {expensesError && <p>Could not load shared expenses.</p>}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button disabled={expensePage === 0 || expensesLoading} onClick={() => setExpensePage(expensePage - 1)}>Previous</button>
+                <button disabled={groupExpenses.length <= 20 || expensesLoading} onClick={() => setExpensePage(expensePage + 1)}>Next</button>
+              </div>
             </div>
           </>
         ) : (
@@ -482,8 +520,11 @@ const RoommateSplitter = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
             {summary?.simplestWayToSettle?.map((path, idx) => (
               <div key={idx} style={{ background: uiColors.bgMain, borderRadius: '12px', padding: '14px', border: `1px solid ${uiColors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: uiColors.tealPrimary }}>{path.fromId === currentUser?._id ? `You pay ${path.to}` : `${path.from} pays you`}</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: uiColors.tealPrimary }}>{path.fromId === currentUser?._id ? `You pay ${path.to}` : `${path.from} pays ${path.toId === currentUser?._id ? 'you' : path.to}`}</div>
                 <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: '1.3rem', fontWeight: 600, color: uiColors.tealPrimary }}>₹{path.amount}</span>
+                {path.toId === currentUser?._id && (
+                  <button type="button" disabled={isRecording} onClick={() => handleRecordRepayment(path)}>Record received</button>
+                )}
               </div>
             ))}
           </div>

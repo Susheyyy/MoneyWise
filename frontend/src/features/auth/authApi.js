@@ -7,6 +7,9 @@ export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery: baseQueryWithAuth,
   endpoints: (builder) => ({
+    getSession: builder.query({
+      query: () => '/api/auth/me',
+    }),
     login: builder.mutation({
       query: (credentials) => ({ url: '/api/auth/login', method: 'POST', body: credentials }),
     }),
@@ -34,7 +37,7 @@ forgotPassword: builder.mutation({
   }),
 });
 
-export const { useGetProfileQuery, useLoginMutation, useSignupMutation, useVerifyEmailMutation, useForgotPasswordMutation, useResetPasswordMutation, useUpdateProfileMutation, useLogoutMutation } = authApi;
+export const { useGetSessionQuery, useGetProfileQuery, useLoginMutation, useSignupMutation, useVerifyEmailMutation, useForgotPasswordMutation, useResetPasswordMutation, useUpdateProfileMutation, useLogoutMutation } = authApi;
 
 export const useSignOut = () => {
   const dispatch = useDispatch();

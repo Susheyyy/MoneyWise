@@ -1,3 +1,7 @@
+const mongoose = require('mongoose');
+const GroupEntry = require('../models/GroupEntry');
+const { toPaise } = require('../utils/money');
+const financialWrite = require('../utils/financialWrite');
 const Group = require('../models/Group');
 const User = require('../models/User');
 const crypto = require('crypto');
@@ -30,10 +34,10 @@ const sendInviteEmail = async (email, groupName, inviteToken) => {
 
 exports.getGroups = async (req, res) => {
   try {
-    const groups = await Group.find({ members: req.user.id })
+    const groups = await Group.find({ members: req.user.id, archivedAt: null })
+      .select('-expenses -activityLog')
       .populate('members', 'name email')
       .sort({ updatedAt: -1 });
-
     res.status(200).json(groups);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -66,6 +70,7 @@ exports.createGroup = async (req, res) => {
 
     const newGroup = await Group.create({
       name: name.trim(),
+      owner: req.user.id,
       members: memberIds,
       pendingInvites,
       inviteToken,
@@ -99,61 +104,91 @@ const allocateShares = (totalPaise, participants) => {
   return allocations.map(({ user, paise }) => ({ user, paise }));
 };
 
+exports.getGroupExpenses = async (req, res) => {
+  try {
+    const offset = Number(req.query.offset ?? 0);
+    const limit = 21;
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 2147483626) {
+      return res.status(400).json({ message: 'Invalid page offset.' });
+    }
+    const group = await Group.findOne({ _id: req.params.id, members: req.user.id, archivedAt: null }).select('_id');
+    if (!group) return res.status(404).json({ message: 'Group not found.' });
+
+    const filter = { group: group._id, kind: 'expense' };
+    const [recent, count] = await Promise.all([
+      GroupEntry.find(filter).sort({ createdAt: -1, _id: -1 }).skip(offset).limit(limit).lean(),
+      GroupEntry.countDocuments(filter),
+    ]);
+    const expenses = recent.map(entry => ({ ...entry, amount: entry.paise / 100, date: entry.createdAt }));
+    if (expenses.length < limit) {
+      const [legacy] = await Group.aggregate([
+        { $match: { _id: group._id } },
+        { $project: { expenses: { $slice: [{ $reverseArray: { $ifNull: ['$expenses', []] } }, Math.max(0, offset - count), limit - expenses.length] } } },
+      ]);
+      expenses.push(...(legacy?.expenses || []));
+    }
+    res.json(expenses);
+  } catch (err) {
+    res.status(400).json({ message: 'Could not load group expenses.' });
+  }
+};
+
 exports.addSharedExpense = async (req, res) => {
   try {
     const { description, amount, splitMode, splitWith } = req.body;
-    const group = await Group.findOne({ _id: req.params.id, members: req.user.id });
+    const result = await financialWrite(req, `group-expense:${req.params.id}`, async session => {
+      const group = await Group.findOneAndUpdate(
+        { _id: req.params.id, members: req.user.id, archivedAt: null },
+        { $inc: { ledgerVersion: 1 } },
+        { new: true, session, projection: { members: 1 } }
+      );
 
-    if (!group) {
-      return res.status(404).json({ message: 'Group workspace pool context not found.' });
-    }
+      if (!group) {
+        throw Object.assign(new Error('Group not found.'), { status: 404 });
+      }
 
-    const totalAmount = Number(amount);
-    const totalPaise = Math.round(totalAmount * 100);
-    if (!Number.isSafeInteger(totalPaise) || totalPaise <= 0 || totalAmount !== totalPaise / 100) {
-      return res.status(400).json({ message: 'Enter a positive amount with at most two decimal places.' });
-    }
-    if (!['equal', 'ratio'].includes(splitMode) || !Array.isArray(splitWith) || !splitWith.length) {
-      return res.status(400).json({ message: 'Select at least one participant and a split type.' });
-    }
+      const totalPaise = toPaise(amount);
+      if (totalPaise <= 0) {
+        throw new Error('Enter a positive amount with at most two decimal places.');
+      }
+      if (!['equal', 'ratio'].includes(splitMode) || !Array.isArray(splitWith) || !splitWith.length) {
+        throw new Error('Select at least one participant and a split type.');
+      }
 
-    const members = new Set(group.members.map(String));
-    const participants = splitWith.map(entry => ({
-      user: String(entry?.user?._id ?? entry?.user ?? entry),
-      weight: splitMode === 'ratio' ? Number(entry?.ratio) : 1
-    }));
-    if (new Set(participants.map(({ user }) => user)).size !== participants.length ||
-        participants.some(({ user, weight }) => !members.has(user) || !Number.isFinite(weight) || weight <= 0)) {
-      return res.status(400).json({ message: 'Choose distinct group members with positive shares.' });
-    }
-    if (splitMode === 'ratio' && Math.abs(participants.reduce((sum, entry) => sum + entry.weight, 0) - 100) > 1e-8) {
-      return res.status(400).json({ message: 'Ratios must add up to 100%.' });
-    }
+      const members = new Set(group.members.map(String));
+      const participants = splitWith.map(entry => ({
+        user: String(entry?.user?._id ?? entry?.user ?? entry),
+        weight: splitMode === 'ratio' ? Number(entry?.ratio) : 1
+      }));
+      if (new Set(participants.map(({ user }) => user)).size !== participants.length ||
+          participants.some(({ user, weight }) => !members.has(user) || !Number.isFinite(weight) || weight <= 0)) {
+        throw new Error('Choose distinct group members with positive shares.');
+      }
+      if (splitMode === 'ratio' && Math.abs(participants.reduce((sum, entry) => sum + entry.weight, 0) - 100) > 1e-8) {
+        throw new Error('Ratios must add up to 100%.');
+      }
 
-    group.expenses.push({
-      description: description.trim(),
-      amount: totalAmount,
-      paidBy: req.user.id,
-      splitWith: participants.map(({ user }) => user),
-      shares: allocateShares(totalPaise, participants)
+      const [entry] = await GroupEntry.create([{
+        group: group._id,
+        kind: 'expense',
+        description: description.trim(),
+        paise: totalPaise,
+        paidBy: req.user.id,
+        shares: allocateShares(totalPaise, participants),
+      }], { session });
+      return entry;
     });
-
-    if (!group.activityLog) group.activityLog = [];
-    group.activityLog.push({ text: (req.user.name || 'Someone') + ' added "' + description.trim() + '" for ₹' + totalAmount });
-    if (group.activityLog.length > 50) group.activityLog = group.activityLog.slice(-50);
-    
-    await group.save();
-    res.status(200).json(group);
+    res.status(200).json(result);
   } catch (err) {
     console.error('Expense Log Failure:', err.message);
-    res.status(400).json({ message: err.message });
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
 
 exports.addMembersAfterFact = async (req, res) => {
   try {
     const { emails } = req.body; 
-    const group = await Group.findOne({ _id: req.params.id, members: req.user.id });
+    const group = await Group.findOne({ _id: req.params.id, members: req.user.id, archivedAt: null });
 
     if (!group) return res.status(404).json({ message: 'Group context not found.' });
 
@@ -201,7 +236,7 @@ exports.editGroupMetadata = async (req, res) => {
     const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ message: 'Name cannot be blank.' });
 
-    const group = await Group.findOne({ _id: req.params.id, members: req.user.id });
+    const group = await Group.findOne({ _id: req.params.id, members: req.user.id, archivedAt: null });
     if (!group) return res.status(404).json({ message: 'Group workspace not found.' });
 
     const oldName = group.name;
@@ -223,37 +258,90 @@ exports.editGroupMetadata = async (req, res) => {
 
 exports.removeGroupMatrix = async (req, res) => {
   try {
-    const group = await Group.findOneAndDelete({ _id: req.params.id, members: req.user.id });
-    if (!group) return res.status(404).json({ message: 'Group not found or you are not authorized.' });
-    res.status(200).json({ message: 'Group workspace wiped successfully.' });
+    const group = await Group.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user.id, archivedAt: null },
+      { archivedAt: new Date() }
+    );
+    if (!group) return res.status(403).json({ message: 'Only the group owner can archive this group.' });
+    res.status(200).json({ message: 'Group archived.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+async function readGroupBalances(group, session) {
+  const balances = Object.fromEntries(group.members.map(member => [String(member._id ?? member), 0]));
+
+  let total = 0;
+  const applyExpense = (expense, totalPaise) => {
+    const payer = String(expense.paidBy);
+    total += totalPaise;
+    if (balances[payer] === undefined) return;
+
+    const participants = expense.splitWith?.length ? expense.splitWith : Object.keys(balances);
+    const shares = expense.shares?.length ? expense.shares : allocateShares(
+      totalPaise, participants.map(user => ({ user, weight: 1 }))
+    );
+    balances[payer] += totalPaise;
+    for (const { user, paise } of shares) {
+      if (balances[user] !== undefined) balances[user] -= paise;
+      else balances[payer] -= paise;
+    }
+  };
+
+  for (const expense of group.expenses) applyExpense(expense, Math.round(expense.amount * 100));
+
+  const query = GroupEntry.find({ group: group._id }).lean();
+  if (session) query.session(session);
+  for await (const entry of query.cursor()) {
+    if (entry.kind === 'expense') applyExpense(entry, entry.paise);
+    else if (balances[entry.paidBy] !== undefined && balances[entry.recipient] !== undefined) {
+      balances[entry.paidBy] += entry.paise;
+      balances[entry.recipient] -= entry.paise;
+    }
+  }
+  return { balances, total };
+}
+
+exports.recordRepayment = async (req, res) => {
+  try {
+    const recipient = String(req.user.id);
+    const { payer: payerId, amount } = req.body;
+    const paise = toPaise(amount);
+    if (paise <= 0 || !mongoose.isObjectIdOrHexString(payerId)) {
+      return res.status(400).json({ message: 'Choose another group member and a positive amount.' });
+    }
+    const payer = String(new mongoose.Types.ObjectId(payerId));
+    if (payer === recipient) return res.status(400).json({ message: 'Choose another group member.' });
+    const repayment = await financialWrite(req, `repayment:${req.params.id}`, async session => {
+      const group = await Group.findOneAndUpdate(
+        { _id: req.params.id, members: { $all: [payer, recipient] }, archivedAt: null },
+        { $inc: { ledgerVersion: 1 } },
+        { new: true, session }
+      );
+      if (!group) throw new Error('Group or member not found.');
+      const { balances } = await readGroupBalances(group, session);
+      if (!(paise <= Math.min(-balances[payer], balances[recipient]))) {
+        throw new Error('The repayment exceeds the current debt or amount owed to this member.');
+      }
+      const [entry] = await GroupEntry.create([{
+        group: group._id, kind: 'repayment', paidBy: payer, recipient, paise,
+      }], { session });
+      return entry;
+    });
+    res.status(201).json(repayment);
+  } catch (err) {
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
 
 exports.getSettlementSummary = async (req, res) => {
   try {
     // Verify the requesting user is actually a member of this group
-    const group = await Group.findOne({ _id: req.params.id, members: req.user.id }).populate('members', 'name email');
+    const group = await Group.findOne({ _id: req.params.id, members: req.user.id, archivedAt: null }).populate('members', 'name email');
     if (!group) return res.status(404).json({ message: 'Group workspace matrix container not found.' });
 
-    const balances = Object.fromEntries(group.members.map(member => [String(member._id), 0]));
-
-    for (const expense of group.expenses) {
-      const payer = String(expense.paidBy);
-      const totalPaise = Math.round(expense.amount * 100);
-      if (balances[payer] === undefined) continue;
-
-      const participants = expense.splitWith?.length ? expense.splitWith : Object.keys(balances);
-      const shares = expense.shares?.length ? expense.shares : allocateShares(
-        totalPaise, participants.map(user => ({ user, weight: 1 }))
-      );
-      balances[payer] += totalPaise;
-      for (const { user, paise } of shares) {
-        if (balances[user] !== undefined) balances[user] -= paise;
-        else balances[payer] -= paise;
-      }
-    }
+    const { balances, total } = await readGroupBalances(group);
 
     const creditors = [];
     const debtors = [];
@@ -290,6 +378,7 @@ exports.getSettlementSummary = async (req, res) => {
     }
 
     res.status(200).json({
+      totalSpent: total / 100,
       netBalances: Object.fromEntries(Object.entries(balances).map(([user, paise]) => [user, paise / 100])),
       simplestWayToSettle: simpleSettlementPaths,
       activityLog: group.activityLog || []
@@ -302,7 +391,7 @@ exports.getSettlementSummary = async (req, res) => {
 exports.joinGroupViaLink = async (req, res) => {
   try {
     const { token } = req.params;
-    const group = await Group.findOne({ inviteToken: token });
+    const group = await Group.findOne({ inviteToken: token, archivedAt: null });
 
     if (!group) {
       return res.status(404).json({ message: 'Invite link is invalid or expired.' });

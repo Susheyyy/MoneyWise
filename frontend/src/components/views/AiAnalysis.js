@@ -1,7 +1,7 @@
 import React from 'react';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
-import { useGetIntelligenceStatsQuery, useGetMonthlySummaryQuery } from '../../features/transactions/transactionApi';
+import { useGetAiRecommendationsMutation, useGetIntelligenceStatsQuery, useGetMonthlySummaryQuery } from '../../features/transactions/transactionApi';
 import { useTheme } from '../../context/ThemeContext';
 
 ChartJS.register(...registerables);
@@ -12,6 +12,7 @@ const monthFormat = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'nu
 const AiAnalysis = () => {
   const { colors } = useTheme();
   const { data: metrics, isLoading, isError, refetch } = useGetIntelligenceStatsQuery();
+  const [getRecommendations, ai] = useGetAiRecommendationsMutation();
   const { data: monthlySummary, isLoading: historyLoading, isError: historyError } = useGetMonthlySummaryQuery();
 
   const uiColors = {
@@ -103,9 +104,15 @@ const AiAnalysis = () => {
       </div>
 
       <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '12px', padding: '24px', background: uiColors.bgLight }}>
-        <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '16px' }}>Gemini AI Context Insights</span>
+        <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '16px' }}>Budgeting suggestions</span>
+        {metrics.aiAvailable && (
+          <button type="button" disabled={ai.isLoading} onClick={() => getRecommendations()}>
+            {ai.isLoading ? 'Generating…' : 'Generate AI suggestions'}
+          </button>
+        )}
+        {ai.isError && <p role="status">AI suggestions are temporarily unavailable.</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {metrics.recommendations.map((rec, i) => (
+          {(ai.data?.recommendations?.length ? ai.data.recommendations : metrics.recommendations).map((rec, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', fontSize: '13px', color: uiColors.tealDark, lineHeight: '1.4' }}>
               <div style={{ marginTop: '5px', width: '6px', height: '6px', borderRadius: '50%', background: uiColors.accentGreen, flexShrink: 0 }} />
               <div>{rec}</div>

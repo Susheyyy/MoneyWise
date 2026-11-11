@@ -17,11 +17,16 @@ export const transactionApi = createApi({
       query: () => '/api/transactions/stats/summary',
       providesTags: ['Summary'],
     }),
+    getLedgerTotals: builder.query({
+      query: () => '/api/transactions/stats/ledger',
+      providesTags: ['Summary'],
+    }),
     addTransaction: builder.mutation({
-      query: (newTxn) => ({
+      query: ({ idempotencyKey, ...newTxn }) => ({
         url: '/api/transactions',
         method: 'POST',
         body: newTxn,
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
       }),
       invalidatesTags: ['Transaction', 'Summary'],
     }),
@@ -56,17 +61,22 @@ export const transactionApi = createApi({
       query: () => '/api/analytics/ai-insights',
       providesTags: ['Transaction'], 
     }),
+    getAiRecommendations: builder.mutation({
+      query: () => ({ url: '/api/analytics/recommendations', method: 'POST' }),
+    }),
   }),
 });
 
 export const {
   useGetTransactionsQuery,
   useGetSummaryQuery,
+  useGetLedgerTotalsQuery,
   useAddTransactionMutation,
   useUpdateTransactionMutation,
   useDeleteTransactionMutation,
   useGetMonthlySummaryQuery,
   useGetCategoryBreakdownQuery,
   useGetWalletDistributionQuery,
-  useGetIntelligenceStatsQuery
+  useGetIntelligenceStatsQuery,
+  useGetAiRecommendationsMutation
 } = transactionApi;

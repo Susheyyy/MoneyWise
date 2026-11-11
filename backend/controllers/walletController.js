@@ -1,3 +1,6 @@
+const mongoose = require('mongoose');
+const { toPaise } = require('../utils/money');
+const { postWalletEntry } = require('../utils/walletLedger');
 const Wallet = require('../models/Wallet');
 
 exports.getWallets = async (req, res) => {
@@ -12,7 +15,12 @@ exports.getWallets = async (req, res) => {
 exports.createWallet = async (req, res) => {
   try {
     const { name, type, balance } = req.body;
-    const wallet = await Wallet.create({ user: req.user.id, name, type, balance });
+    const opening = toPaise(balance ?? 0);
+    const wallet = await mongoose.connection.transaction(async session => {
+      const created = new Wallet({ user: req.user.id, name, type });
+      await postWalletEntry(created, opening, 'opening', undefined, session);
+      return created;
+    });
     res.status(201).json(wallet);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -21,10 +29,10 @@ exports.createWallet = async (req, res) => {
 
 exports.updateWallet = async (req, res) => {
   try {
-    const { name, type, balance } = req.body;
+    const { name, type } = req.body;
     const wallet = await Wallet.findOneAndUpdate(
       { _id: req.params.id, user: req.user.id },
-      { name, type, balance: Number(balance) },
+      { name, type },
       { new: true, runValidators: true }
     );
     if (!wallet) return res.status(404).json({ message: 'Wallet not found' });

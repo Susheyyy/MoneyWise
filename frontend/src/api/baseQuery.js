@@ -14,6 +14,7 @@ export const baseQueryWithAuth = async (args, api, extraOptions) => {
 
   if (
     result.error?.status === 401 &&
+    url !== '/api/auth/me' &&
     !url.includes('/auth/login') &&
     window.location.pathname !== '/login'
   ) {

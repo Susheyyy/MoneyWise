@@ -1,6 +1,9 @@
 const Goal = require('../models/Goal');
 const Wallet = require('../models/Wallet');
 const mongoose = require('mongoose');
+const { toPaise } = require('../utils/money');
+const { walletBalance, postWalletEntry } = require('../utils/walletLedger');
+const financialWrite = require('../utils/financialWrite');
 
 exports.getGoals = async (req, res) => {
   try {
@@ -18,8 +21,8 @@ exports.createGoal = async (req, res) => {
     const newGoal = await Goal.create({
       user: req.user.id,
       name: name.trim(),
-      targetAmount: Number(targetAmount),
-      monthlySavingsTarget: Number(monthlySavings) || 0,
+      targetAmount: toPaise(targetAmount) / 100,
+      monthlySavingsTarget: toPaise(monthlySavings ?? 0) / 100,
       category: category || 'General',
       notes: notes || '',
       startDate: startDate || new Date(),
@@ -45,8 +48,8 @@ exports.updateGoal = async (req, res) => {
     if (!goal) return res.status(404).json({ message: 'Goal not found' });
 
     if (name) goal.name = name.trim();
-    if (targetAmount !== undefined) goal.targetAmount = Number(targetAmount);
-    if (monthlySavings !== undefined) goal.monthlySavingsTarget = Number(monthlySavings);
+    if (targetAmount !== undefined) goal.targetAmount = toPaise(targetAmount) / 100;
+    if (monthlySavings !== undefined) goal.monthlySavingsTarget = toPaise(monthlySavings) / 100;
     if (category) goal.category = category;
     if (notes !== undefined) goal.notes = notes;
     if (targetDate) goal.targetDate = targetDate;
@@ -59,62 +62,56 @@ exports.updateGoal = async (req, res) => {
 };
 
 exports.addContribution = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
   try {
     const { amount, walletId, walletName, note } = req.body;
-    const contributionAmount = Number(amount);
+    const paise = toPaise(amount);
+    if (paise <= 0) throw new Error('Contribution amount must be positive.');
+    const contributionAmount = paise / 100;
+    const updated = await financialWrite(req, `goal:${req.params.id}`, async session => {
+      const goal = await Goal.findOne({ _id: req.params.id, user: req.user.id, archivedAt: null }).session(session);
+      if (!goal) throw new Error('Goal not found');
 
-    if (!Number.isFinite(contributionAmount) || contributionAmount <= 0) {
-      throw new Error('Contribution amount must be greater than zero');
-    }
+      if (walletId) {
+        const wallet = await Wallet.findOne({ _id: walletId, user: req.user.id }).session(session);
+        if (!wallet) throw new Error('Wallet not found');
+        if (walletBalance(wallet) < paise) throw new Error('Insufficient wallet balance');
+        await postWalletEntry(wallet, -paise, 'goal-contribution', goal._id, session);
+      }
 
-    const goal = await Goal.findOne({ _id: req.params.id, user: req.user.id, archivedAt: null }).session(session);
-    if (!goal) throw new Error('Goal not found');
+      // Add contribution record
+      goal.contributions.push({
+        amount: contributionAmount,
+        walletId: walletId || null,
+        walletName: walletName || 'Manual',
+        note: note || '',
+        date: new Date()
+      });
 
-    // Deduct from wallet if walletId is provided
-    if (walletId) {
-      const wallet = await Wallet.findOne({ _id: walletId, user: req.user.id }).session(session);
-      if (!wallet) throw new Error('Wallet not found');
-      if (wallet.balance < contributionAmount) throw new Error('Insufficient wallet balance');
-      wallet.balance -= contributionAmount;
-      await wallet.save({ session });
-    }
+      const saved = toPaise(goal.currentSaved, { legacy: true }) + paise;
+      if (!Number.isSafeInteger(saved)) throw new Error('Saved balance is outside the supported range.');
+      goal.currentSaved = saved / 100;
 
-    // Add contribution record
-    goal.contributions.push({
-      amount: contributionAmount,
-      walletId: walletId || null,
-      walletName: walletName || 'Manual',
-      note: note || '',
-      date: new Date()
+      // Auto-tick milestones
+      const ratio = goal.currentSaved / goal.targetAmount;
+      const now = new Date();
+
+      if (ratio >= 0.25 && !goal.milestones.quarterSaved.isReached) {
+        goal.milestones.quarterSaved = { isReached: true, reachedAt: now };
+      }
+      if (ratio >= 0.5 && !goal.milestones.halfway.isReached) {
+        goal.milestones.halfway = { isReached: true, reachedAt: now };
+      }
+      if (ratio >= 0.75 && !goal.milestones.almostThere.isReached) {
+        goal.milestones.almostThere = { isReached: true, reachedAt: now };
+      }
+
+      await goal.save({ session });
+
+      return goal;
     });
-
-    goal.currentSaved += contributionAmount;
-
-    // Auto-tick milestones
-    const ratio = goal.currentSaved / goal.targetAmount;
-    const now = new Date();
-
-    if (ratio >= 0.25 && !goal.milestones.quarterSaved.isReached) {
-      goal.milestones.quarterSaved = { isReached: true, reachedAt: now };
-    }
-    if (ratio >= 0.5 && !goal.milestones.halfway.isReached) {
-      goal.milestones.halfway = { isReached: true, reachedAt: now };
-    }
-    if (ratio >= 0.75 && !goal.milestones.almostThere.isReached) {
-      goal.milestones.almostThere = { isReached: true, reachedAt: now };
-    }
-
-    await goal.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
-    res.status(200).json(goal);
+    res.status(200).json(updated);
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
-    res.status(400).json({ message: err.message });
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
 
@@ -134,10 +131,7 @@ exports.deleteGoal = async (req, res) => {
         if (!refundWalletId) return { status: 409, message: 'Choose a wallet to receive the saved balance.' };
         const wallet = await Wallet.findOne({ _id: refundWalletId, user }).session(session);
         if (!wallet) return { status: 400, message: 'Refund wallet not found.' };
-        const updatedBalance = wallet.balance + goal.currentSaved;
-        if (!Number.isFinite(updatedBalance)) return { status: 409, message: 'The refund wallet has an invalid balance.' };
-        wallet.balance = updatedBalance;
-        await wallet.save({ session });
+        await postWalletEntry(wallet, toPaise(goal.currentSaved, { legacy: true }), 'goal-refund', goal._id, session);
         goal.refundWallet = wallet._id;
       }
 

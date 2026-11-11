@@ -1,7 +1,9 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
+import { useGetSessionQuery } from './features/auth/authApi';
+import { setCredentials } from './features/auth/authSlice';
 import LoginSignup from './features/auth/LoginSignup';
 import LandingPage from './components/views/LandingPage';
 import JoinGroupLanding from './components/views/JoinGroupLanding';
@@ -24,13 +26,32 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace state={{ returnTo: pathname }} />;
 };
 
-function App() {
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const { currentData: summary, isLoading: summaryLoading } = useGetSummaryQuery(undefined, { skip: !isAuthenticated });
-  const { currentData: categories = [], isLoading: catsLoading } = useGetCategoriesQuery(undefined, { skip: !isAuthenticated });
-  const { currentData: expenses = [], isLoading: txnsLoading } = useGetTransactionsQuery(undefined, { skip: !isAuthenticated });
+const Dashboard = () => {
+  const { currentData: summary, isLoading: summaryLoading } = useGetSummaryQuery();
+  const { currentData: categories = [], isLoading: categoriesLoading } = useGetCategoriesQuery();
+  const { currentData: expenses = [], isLoading: transactionsLoading } = useGetTransactionsQuery({ limit: 4 });
 
-  const dynamicSyncLoading = summaryLoading || catsLoading || txnsLoading;
+  return (
+    <Layout>
+      {summaryLoading || categoriesLoading || transactionsLoading
+        ? <p style={{ padding: '32px' }}>Loading dashboard…</p>
+        : <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />}
+    </Layout>
+  );
+};
+
+function App() {
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector(state => state.auth.isAuthenticated);
+  const { currentData: session, isLoading, isFetching } = useGetSessionQuery(undefined, { skip: isAuthenticated });
+
+  useEffect(() => {
+    if (session && !isAuthenticated) dispatch(setCredentials({ user: session }));
+  }, [dispatch, isAuthenticated, session]);
+
+  if (!isAuthenticated && (isLoading || isFetching || session)) {
+    return <p role="status" style={{ padding: '24px' }}>Checking your session…</p>;
+  }
 
   return (
     <ClickSpark sparkColor="#1D9E75" sparkSize={9} sparkRadius={18} sparkCount={8} duration={500}>
@@ -39,22 +60,7 @@ function App() {
       <Route path="/login" element={<LoginSignup initialIsLogin={true} />} />
       <Route path="/signup" element={<LoginSignup initialIsLogin={false} />} />
 
-<Route 
-  path="/dashboard" 
-  element={
-    <ProtectedRoute>
-      <Layout expenses={expenses}> 
-        {dynamicSyncLoading ? (
-          <div style={{ padding: '40px', color: '#364C4F', fontWeight: '600' }}>
-            Synchronizing assets...
-          </div>
-        ) : (
-          <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />
-        )}
-      </Layout>
-    </ProtectedRoute>
-  }
-/>
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route 
         path="/expenses" 
         element={

@@ -1,13 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const connectDB = require('./config/db');
+const { connectDB, checkDatabase } = require('./config/db');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
-
-connectDB();
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000', 
@@ -37,9 +35,17 @@ app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
 app.use('/api/college/mess', require('./routes/messRoutes'));
 
-app.get('/', (req, res) => {
-  res.json({ infrastructure: 'API Running Stable' });
-});
+const readiness = async (req, res) => {
+  try {
+    await checkDatabase();
+    res.json({ status: 'ready' });
+  } catch {
+    res.status(503).json({ status: 'unavailable' });
+  }
+};
+
+app.get('/', readiness);
+app.get('/health/ready', readiness);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -47,4 +53,9 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`API Running on ${PORT}`));
+connectDB()
+  .then(() => app.listen(PORT, () => console.log(`API Running on ${PORT}`)))
+  .catch(err => {
+    console.error(`API startup failed: ${err.message}`);
+    process.exit(1);
+  });

@@ -1,9 +1,11 @@
+import { useRetryKey } from '../utils/useRetryKey';
 import React, { useState } from 'react';
 import { useAddTransactionMutation } from '../features/transactions/transactionApi';
 import { getErrorMessage } from '../utils/errorHandler';
 
 const ExpenseForm = ({ categories = [], wallets = [] }) => {
-  const [addTransaction] = useAddTransactionMutation();
+  const [addTransaction, { isLoading }] = useAddTransactionMutation();
+  const [retryKey, clearRetryKey] = useRetryKey();
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -15,15 +17,15 @@ const ExpenseForm = ({ categories = [], wallets = [] }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
     if (!formData.category || !formData.wallet) {
       alert('Please establish at least one Category and funding Wallet balance first');
       return;
     }
     try {
-      await addTransaction({
-        ...formData,
-        amount: Number(formData.amount)
-      }).unwrap();
+      const transaction = { ...formData, amount: Number(formData.amount) };
+      await addTransaction({ ...transaction, idempotencyKey: retryKey(transaction) }).unwrap();
+      clearRetryKey();
       setFormData({ ...formData, description: '', amount: '' });
     } catch (err) {
       alert(getErrorMessage(err, 'Failed to submit transaction'));
@@ -47,7 +49,7 @@ const ExpenseForm = ({ categories = [], wallets = [] }) => {
         </div>
         <div className="form-group">
           <label>Amount (₹)</label>
-          <input type="number" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} placeholder="0.00" required />
+          <input type="number" min="0.01" step="0.01" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} placeholder="0.00" required />
         </div>
         <div className="form-group">
           <label>Category Target</label>
