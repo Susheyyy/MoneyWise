@@ -20,7 +20,7 @@ const authLimiter = rateLimit({
 
 router.post('/signup', authLimiter, registerUser);
 router.post('/login', authLimiter, loginUser);
-router.post('/logout', protect, logoutUser);
+router.post('/logout', logoutUser);
 router.post('/verify-email', verifyEmail);
 
 router.post('/forgot-password', forgotPassword);

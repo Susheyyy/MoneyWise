@@ -127,8 +127,7 @@ exports.loginUser = async (req, res) => {
 };
 
 exports.logoutUser = async (req, res) => {
-  res.cookie('token', 'none', {
-    expires: new Date(Date.now() + 10 * 1000),
+  res.clearCookie('token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict'

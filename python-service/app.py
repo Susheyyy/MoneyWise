@@ -4,22 +4,37 @@ import numpy as np
 
 app = Flask(__name__)
 
+
+def forecast_monthly_spending(expenses, current_month, first_month):
+    """Average spending over up to three completed months of ledger history."""
+    if pd.isna(first_month) or first_month >= current_month:
+        return None
+    months = pd.period_range(max(first_month, current_month - 3), current_month - 1, freq='M')
+    totals = expenses.groupby('month')['amount'].sum().reindex(months, fill_value=0)
+    return round(float(totals.mean()), 2)
+
+
 @app.route('/api/intelligence/analyze', methods=['POST'])
 def analyze():
     try:
         transactions = request.get_json()
         if not transactions:
-            return jsonify({"healthScore": 100, "anomalies": [], "forecast": 0, "trends": {}, "percentageSpentIncrease": 0})
+            return jsonify({"healthScore": 100, "anomalies": [], "forecast": None, "trends": {}, "percentageSpentIncrease": 0})
 
         df = pd.DataFrame(transactions)
         
         df['amount'] = pd.to_numeric(df['amount'], errors='coerce').fillna(0)
         df['type'] = df['type'].fillna('expense')
         
-        df_expenses = df[df['type'] == 'expense']
+        now = pd.Timestamp.now(tz='UTC')
+        current_month = now.tz_localize(None).to_period('M')
+        dates = pd.to_datetime(df.get('date', pd.Series(pd.NaT, index=df.index)), errors='coerce', utc=True)
+        df['month'] = dates.dt.tz_localize(None).dt.to_period('M')
+        df_expenses = df[(df['type'] == 'expense') & (dates.isna() | (dates <= now))]
+        projected_forecast = forecast_monthly_spending(df_expenses, current_month, df['month'].min())
         
         if df_expenses.empty:
-            return jsonify({"healthScore": 100, "anomalies": [], "forecast": 0, "trends": {}, "percentageSpentIncrease": 0})
+            return jsonify({"healthScore": 100, "anomalies": [], "forecast": projected_forecast, "trends": {}, "percentageSpentIncrease": 0})
 
         total_spent = float(df_expenses['amount'].sum())
         
@@ -34,23 +49,13 @@ def analyze():
 
         cat_group = df_expenses.groupby('category')['amount'].sum()
         trends_dict = {str(k): float(v) for k, v in cat_group.items()}
-        projected_forecast = float(np.round(total_spent * 1.07))
 
         # Calculate real MoM percentage increase for Food
         food_expenses = df_expenses[df_expenses['category'].str.lower() == 'food']
         
-        if not food_expenses.empty and 'date' in df_expenses.columns:
-            food_expenses['date'] = pd.to_datetime(food_expenses['date'], errors='coerce')
-            now = pd.Timestamp.now()
-            current_month_mask = (food_expenses['date'].dt.month == now.month) & (food_expenses['date'].dt.year == now.year)
-            
-            # Handle january (month 1 -> 12, year -> year - 1)
-            last_month_val = 12 if now.month == 1 else now.month - 1
-            last_month_year = now.year - 1 if now.month == 1 else now.year
-            last_month_mask = (food_expenses['date'].dt.month == last_month_val) & (food_expenses['date'].dt.year == last_month_year)
-
-            current_food = float(food_expenses[current_month_mask]['amount'].sum())
-            last_food = float(food_expenses[last_month_mask]['amount'].sum())
+        if not food_expenses.empty:
+            current_food = float(food_expenses.loc[food_expenses['month'] == current_month, 'amount'].sum())
+            last_food = float(food_expenses.loc[food_expenses['month'] == current_month - 1, 'amount'].sum())
             
             if last_food > 0:
                 percentage_increase = int(((current_food - last_food) / last_food) * 100)

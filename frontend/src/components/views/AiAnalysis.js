@@ -1,20 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
-import Chart from 'chart.js/auto';
-import axios from 'axios';
+import React from 'react';
+import { Chart as ChartJS, registerables } from 'chart.js';
+import { Bar, Line } from 'react-chartjs-2';
+import { useGetIntelligenceStatsQuery, useGetMonthlySummaryQuery } from '../../features/transactions/transactionApi';
 import { useTheme } from '../../context/ThemeContext';
+
+ChartJS.register(...registerables);
+
+const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+const monthFormat = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 const AiAnalysis = () => {
   const { colors } = useTheme();
-  const barChartRef = useRef(null);
-  const lineChartRef = useRef(null);
-  const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState({
-    healthScore: 100,
-    anomalies: [],
-    forecast: 0,
-    trends: {},
-    recommendations: []
-  });
+  const { data: metrics, isLoading, isError, refetch } = useGetIntelligenceStatsQuery();
+  const { data: monthlySummary, isLoading: historyLoading, isError: historyError } = useGetMonthlySummaryQuery();
 
   const uiColors = {
     tealDark: colors.textDark,
@@ -26,77 +24,45 @@ const AiAnalysis = () => {
     bgLight: colors.bgLight
   };
 
-  useEffect(() => {
-    let barInstance = null;
-    let lineInstance = null;
-
-    const fetchServerAnalyticsPipeline = async () => {
-      try {
-        const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-        const response = await axios.get('http://localhost:5000/api/analytics/ai-insights', config);
-        const data = response.data;
-
-        setMetrics(data);
-        setLoading(false);
-
-        if (barChartRef.current) {
-          const ctx = barChartRef.current.getContext('2d');
-          barInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: Object.keys(data.trends).length > 0 ? Object.keys(data.trends) : ['Shopping', 'Food', 'Transport'],
-              datasets: [{
-                data: Object.keys(data.trends).length > 0 ? Object.values(data.trends) : [0, 0, 0],
-                backgroundColor: ['#1D9E75', '#364C4F', '#EF9F27', '#534AB7', '#E24B4A'],
-                borderRadius: 6
-              }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-          });
-        }
-
-        if (lineChartRef.current) {
-          const ctx = lineChartRef.current.getContext('2d');
-          lineInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: ['May 2026', 'Jun 2026 (Live)', 'Jul 2026 (AI Forecast)'],
-              datasets: [{
-                data: [data.forecast * 0.9, data.forecast * 0.95, data.forecast],
-                borderColor: '#1D9E75',
-                backgroundColor: 'rgba(29, 158, 117, 0.04)',
-                fill: true,
-                tension: 0.2
-              }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-          });
-        }
-
-      } catch (err) {
-        console.error('Error tracking view pipeline analytics sync:', err);
-        setLoading(false);
-      }
-    };
-
-    fetchServerAnalyticsPipeline();
-
-    return () => {
-      if (barInstance) barInstance.destroy();
-      if (lineInstance) lineInstance.destroy();
-    };
-  }, []);
-
-  if (loading) {
-    return <div style={{ padding: '40px', color: uiColors.tealDark, fontWeight: 600 }}>Executing data frame calculations vector routines...</div>;
+  if (isLoading) return <p style={{ padding: '32px' }}>Loading analysis…</p>;
+  if (isError || !metrics) {
+    return <div role="alert" style={{ padding: '32px' }}>Analysis is unavailable. <button onClick={refetch}>Try again</button></div>;
   }
+
+  const monthlyExpenses = new Map();
+  for (const { _id: { year, month, type }, total } of monthlySummary || []) {
+    const key = year * 12 + month - 1;
+    monthlyExpenses.set(key, (monthlyExpenses.get(key) || 0) + (type === 'expense' ? total : 0));
+  }
+  const months = Array.from(monthlyExpenses.keys()).sort((a, b) => a - b);
+  const history = months.length
+    ? Array.from({ length: months[months.length - 1] - months[0] + 1 }, (_, index) => months[0] + index)
+    : [];
+  const trends = Object.entries(metrics.trends);
+  const barData = {
+    labels: trends.map(([name]) => name),
+    datasets: [{
+      data: trends.map(([, total]) => total),
+      backgroundColor: colors.tealPrimary,
+      borderRadius: 6
+    }]
+  };
+  const lineData = {
+    labels: history.map(month => monthFormat.format(new Date(Date.UTC(Math.floor(month / 12), month % 12, 1)))),
+    datasets: [{
+      label: 'Recorded expenses',
+      data: history.map(month => monthlyExpenses.get(month) || 0),
+      borderColor: colors.tealPrimary,
+      tension: 0.2
+    }]
+  };
 
   return (
     <div style={{ background: colors.background, padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: '32px', overflowY: 'auto', flex: 1, minHeight: '100%' }}>
       
       <div>
         <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', letterSpacing: '0.8px', borderLeft: '3px solid #1D9E75', paddingLeft: '12px', marginBottom: '4px' }}>AI Predictive Engine</h3>
-        <div style={{ fontSize: '12px', color: uiColors.textMuted }}>NumPy, Pandas, and Gemini API analytical tracking loop output context</div>
+        <div style={{ fontSize: '12px', color: uiColors.textMuted }}>Spending history, trends, and a forecast based on up to three completed months.</div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
@@ -109,9 +75,9 @@ const AiAnalysis = () => {
         </div>
 
         <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '12px', padding: '20px', background: uiColors.bgLight }}>
-          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', color: uiColors.textMuted, textTransform: 'uppercase' }}>Next-Cycle Predicted Spending</div>
+          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', color: uiColors.textMuted, textTransform: 'uppercase' }}>Next-month spending forecast</div>
           <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: '2.4rem', fontWeight: 600, color: uiColors.tealDark, marginTop: '8px' }}>
-            ₹{metrics.forecast.toLocaleString('en-IN')}
+            {metrics.forecast == null ? 'Insufficient history' : `₹${metrics.forecast.toLocaleString('en-IN')}`}
           </div>
         </div>
 
@@ -125,10 +91,14 @@ const AiAnalysis = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '12px', padding: '20px', height: '280px', position: 'relative' }}>
-          <canvas ref={barChartRef} />
+          {trends.length ? <Bar data={barData} options={chartOptions} /> : <p>No recorded expenses by category.</p>}
         </div>
         <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '12px', padding: '20px', height: '280px', position: 'relative' }}>
-          <canvas ref={lineChartRef} />
+          {historyLoading && <p>Loading spending history…</p>}
+          {historyError && <p>Spending history is unavailable.</p>}
+          {!historyLoading && !historyError && (
+            history.length ? <Line data={lineData} options={chartOptions} /> : <p>No spending history yet.</p>
+          )}
         </div>
       </div>
 

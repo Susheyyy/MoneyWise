@@ -9,14 +9,15 @@ import { useGetWalletsQuery } from '../../features/wallets/walletApi';
 import { useGetCategoriesQuery } from '../../features/categories/categoryApi';
 import { useTheme } from '../../context/ThemeContext';
 import { getErrorMessage } from '../../utils/errorHandler';
+import { downloadTransactionExport } from '../../utils/downloadTransactionExport';
 
 const ExpenseManager = () => {
 
-  const { data: expensesData = [], refetch } = useGetTransactionsQuery();
-  const [addTransaction] = useAddTransactionMutation();
-  const [updateTransaction] = useUpdateTransactionMutation();
-  const [deleteTransaction] = useDeleteTransactionMutation();
-  const { data: dbWallets = [] } = useGetWalletsQuery();
+  const { data: expensesData = [] } = useGetTransactionsQuery();
+  const [addTransaction, { isLoading: isAdding }] = useAddTransactionMutation();
+  const [updateTransaction, { isLoading: isUpdating }] = useUpdateTransactionMutation();
+  const [deleteTransaction, { isLoading: isDeleting }] = useDeleteTransactionMutation();
+  const { data: dbWallets = [], refetch: refetchWallets } = useGetWalletsQuery();
   const { data: dbCategories = [] } = useGetCategoriesQuery();
 
   const { colors, fontSizeMultiplier } = useTheme();
@@ -26,11 +27,15 @@ const ExpenseManager = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
   const [selectedWalletFilter, setSelectedWalletFilter] = useState('');
   
-  const [selectedTxn, setSelectedTxn] = useState(null);
+  const [selectedTxnId, setSelectedTxnId] = useState(null);
+  const selectedTxn = expensesData.find(txn => txn._id === selectedTxnId);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingTxnId, setEditingTxnId] = useState(null);
+  const isEditMode = editingTxnId !== null;
+  const isSaving = isAdding || isUpdating;
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [txnType, setTxnType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -103,11 +108,18 @@ const ExpenseManager = () => {
     setPaymentMode('UPI');
     setTxnType('expense');
     setDate(new Date().toISOString().split('T')[0]);
-    setIsEditMode(false);
+    setEditingTxnId(null);
+  };
+
+  const closeDrawer = () => {
+    if (isSaving) return;
+    setIsDrawerOpen(false);
+    resetForm();
   };
 
   const openEditDrawer = (txn) => {
-    setIsEditMode(true);
+    setEditingTxnId(txn._id);
+    setAutoCatSuggestion('');
     setTxnType(txn.type);
     setAmount(txn.amount.toString());
     setDescription(txn.description || '');
@@ -123,8 +135,18 @@ const ExpenseManager = () => {
 
   const handleSaveTransaction = async (e) => {
     e.preventDefault();
-    if (!amount || !description.trim()) {
-      showNotification('Please fill in required fields.', 'error');
+    if (isSaving) return;
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      showNotification('Enter an amount greater than zero.', 'error');
+      return;
+    }
+    if (!description.trim() || !date) {
+      showNotification('Enter a description and date.', 'error');
+      return;
+    }
+    if (!categoryId) {
+      showNotification('Please select a category.', 'error');
       return;
     }
     if (!walletId) {
@@ -132,54 +154,57 @@ const ExpenseManager = () => {
       return;
     }
 
+    const transaction = {
+      amount: numericAmount,
+      description: description.trim(),
+      type: txnType,
+      category: categoryId,
+      wallet: walletId,
+      date,
+      paymentMode,
+      notes: notes.trim(),
+      tags,
+      isSharedExpense: isShared
+    };
     try {
-      if (isEditMode && selectedTxn) {
-        await updateTransaction({
-          id: selectedTxn._id,
-          amount: Number(amount),
-          description: description.trim(),
-          type: txnType,
-          category: categoryId,
-          wallet: walletId,
-          date,
-          paymentMode,
-          notes: notes.trim(),
-          tags,
-          isSharedExpense: isShared
-        }).unwrap();
-        showNotification('Transaction updated successfully.', 'success');
+      if (isEditMode) {
+        await updateTransaction({ id: editingTxnId, ...transaction }).unwrap();
       } else {
-        await addTransaction({
-          amount: Number(amount),
-          description: description.trim(),
-          type: txnType,
-          category: categoryId,
-          wallet: walletId,
-          date,
-          paymentMode,
-          notes: notes.trim(),
-          tags,
-          isSharedExpense: isShared
-        }).unwrap();
-        showNotification('Transaction added successfully.', 'success');
+        await addTransaction(transaction).unwrap();
       }
+      showNotification(isEditMode ? 'Transaction updated.' : 'Transaction added.');
 
       setIsDrawerOpen(false);
       resetForm();
-      refetch();
+      refetchWallets();
     } catch (err) {
       showNotification(getErrorMessage(err, 'Error saving transaction.'), 'error');
     }
   };
 
-  const handleDeleteStub = async (id) => {
+  const handleDeleteTransaction = async (id) => {
+    if (isDeleting) return;
     try {
       await deleteTransaction(id).unwrap();
+      refetchWallets();
       showNotification('Transaction deleted successfully.', 'success');
       setIsPanelOpen(false);
-      setSelectedTxn(null);
+      setSelectedTxnId(null);
     } catch (err) {
       showNotification(getErrorMessage(err, 'Error deleting transaction.'), 'error');
+    }
+  };
+
+  const handleExport = async (format) => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await downloadTransactionExport(format);
+      setIsExportModalOpen(false);
+    } catch {
+      showNotification('Export failed. Try again.', 'error');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -228,7 +253,7 @@ const ExpenseManager = () => {
         {/* Action buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button onClick={() => setIsExportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'transparent', color: colors.textPrimary, border: `1px solid ${colors.border}`, padding: '7px 16px', borderRadius: '8px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Export</button>
-          <button onClick={() => setIsDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1E3336', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>+ Add transaction</button>
+          <button onClick={() => { resetForm(); setIsDrawerOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1E3336', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>+ Add transaction</button>
         </div>
       </div>
 
@@ -240,25 +265,25 @@ const ExpenseManager = () => {
             <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Total income</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.green }}>₹{totalIncome.toLocaleString('en-IN')}</div>
-              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>Current Month Cycle</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>All time</div>
             </div>
 
             <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Total expenses</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.red }}>₹{totalExpenses.toLocaleString('en-IN')}</div>
-              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>{expensesData.filter(t => t.type === 'expense').length} active lines</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>{expensesData.filter(t => t.type === 'expense').length} expenses</div>
             </div>
 
             <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Net savings</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.tealDark }}>₹{netSavings.toLocaleString('en-IN')}</div>
-              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.green, fontWeight: 600, marginTop: '4px' }}>Balanced Liquidity</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.green, fontWeight: 600, marginTop: '4px' }}>Income minus expenses</div>
             </div>
 
             <div style={{ padding: '20px 24px' }}>
               <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Largest spend</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.3 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.tealDark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{largestSpendItem ? largestSpendItem.description : 'None'}</div>
-              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>{largestSpendItem ? `₹${largestSpendItem.amount.toLocaleString('en-IN')} · ${largestSpendItem.category}` : 'No records yet'}</div>
+              <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, color: colors.textMuted, marginTop: '4px' }}>{largestSpendItem ? `₹${largestSpendItem.amount.toLocaleString('en-IN')} · ${largestSpendItem.category?.name || 'Uncategorized'}` : 'No records yet'}</div>
             </div>
           </div>
 
@@ -306,7 +331,7 @@ const ExpenseManager = () => {
           const isExpense = txn.type === 'expense';
 
                     return (
-                      <tr key={txn._id} onClick={() => { setSelectedTxn(txn); setIsPanelOpen(true); }} style={{ borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', background: selectedTxn?._id === txn._id ? `${colors.tealPrimary}0D` : 'transparent', transition: 'background 0.15s ease' }}>
+                      <tr key={txn._id} onClick={() => { setSelectedTxnId(txn._id); setIsPanelOpen(true); }} style={{ borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', background: selectedTxn?._id === txn._id ? `${colors.tealPrimary}0D` : 'transparent', transition: 'background 0.15s ease' }}>
                         <td style={{ padding: '16px 20px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${12 * fontSizeMultiplier}px`, background: colors.bgLight, color: colors.textMuted, fontWeight: 700 }}>
@@ -389,10 +414,10 @@ const ExpenseManager = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '20px' }}>
-                   <button onClick={() => openEditDrawer(selectedTxn)} style={{ flex: 1, padding: '12px', background: `${colors.tealPrimary}1A`, color: colors.tealPrimary, border: `1px solid ${colors.tealPrimary}4D`, borderRadius: '12px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                   <button disabled={isDeleting} onClick={() => openEditDrawer(selectedTxn)} style={{ flex: 1, padding: '12px', background: `${colors.tealPrimary}1A`, color: colors.tealPrimary, border: `1px solid ${colors.tealPrimary}4D`, borderRadius: '12px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
                     Edit
                   </button>
-                  <button onClick={() => handleDeleteStub(selectedTxn._id)} style={{ flex: 1, padding: '12px', background: `${colors.red}1A`, color: colors.red, border: `1px solid ${colors.red}4D`, borderRadius: '12px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                  <button disabled={isDeleting} onClick={() => handleDeleteTransaction(selectedTxn._id)} style={{ flex: 1, padding: '12px', background: `${colors.red}1A`, color: colors.red, border: `1px solid ${colors.red}4D`, borderRadius: '12px', fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
                     Delete
                   </button>
                 </div>
@@ -409,11 +434,11 @@ const ExpenseManager = () => {
 
       {isDrawerOpen && (
         <>
-          <div onClick={() => setIsDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 40 }} />
+          <div onClick={closeDrawer} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 40 }} />
           <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: '440px', background: colors.cardBg, zIndex: 50, display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 40px rgba(0,0,0,0.15)' }}>
             <div style={{ background: colors.tealDark, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Log operational ledger row</span>
-              <span onClick={() => setIsDrawerOpen(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold' }}>✕</span>
+              <span onClick={closeDrawer} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold' }}>✕</span>
             </div>
 
             <form onSubmit={handleSaveTransaction} style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -424,7 +449,7 @@ const ExpenseManager = () => {
 
               <div>
                 <label style={{ display: 'block', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Transaction value</label>
-                <input type="number" placeholder="₹0" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ width: '100%', padding: '16px 20px', border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${1.8 * fontSizeMultiplier}rem`, color: colors.tealDark, outline: 'none', fontFamily: "'Oswald', sans-serif", fontWeight: 600, background: colors.white, boxSizing: 'border-box', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.02)' }} />
+                <input type="number" step="any" placeholder="₹0" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ width: '100%', padding: '16px 20px', border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${1.8 * fontSizeMultiplier}rem`, color: colors.tealDark, outline: 'none', fontFamily: "'Oswald', sans-serif", fontWeight: 600, background: colors.white, boxSizing: 'border-box', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.02)' }} />
               </div>
 
               <div>
@@ -494,13 +519,13 @@ const ExpenseManager = () => {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: colors.bgLight, borderRadius: '10px', marginTop: '4px', border: `1px solid ${colors.border}` }}>
-                <span style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.tealPrimary }}>Mark as shared roommate split entry</span>
+                <span style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.tealPrimary }}>Mark as a shared expense</span>
                 <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} style={{ accentColor: colors.tealPrimary, cursor: 'pointer', width: '18px', height: '18px' }} />
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '20px', paddingBottom: '24px' }}>
-                <button type="button" onClick={() => { setIsDrawerOpen(false); resetForm(); }} style={{ padding: '14px 20px', background: colors.bgLight, color: colors.textPrimary, border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, padding: '14px', background: colors.tealPrimary, color: '#fff', border: 'none', borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition: 'all 0.2s' }}>{isEditMode ? 'Update Transaction' : 'Save Transaction'}</button>
+                <button type="button" disabled={isSaving} onClick={closeDrawer} style={{ padding: '14px 20px', background: colors.bgLight, color: colors.textPrimary, border: `1px solid ${colors.border}`, borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>Cancel</button>
+                <button type="submit" disabled={isSaving} style={{ flex: 1, padding: '14px', background: colors.tealPrimary, color: '#fff', border: 'none', borderRadius: '12px', fontSize: `${14 * fontSizeMultiplier}px`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition: 'all 0.2s' }}>{isSaving ? 'Saving…' : isEditMode ? 'Update Transaction' : 'Save Transaction'}</button>
               </div>
             </form>
           </div>
@@ -511,30 +536,16 @@ const ExpenseManager = () => {
         <div onClick={() => setIsExportModalOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: colors.cardBg, borderRadius: '20px', width: '400px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
             <div style={{ background: colors.tealDark, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Export workbook</span>
+              <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Export transactions</span>
               <span onClick={() => setIsExportModalOpen(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold' }}>✕</span>
             </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, marginBottom: '8px', fontWeight: 500 }}>Compile current ledger cycle file blocks</div>
-              
-              <div onClick={async () => {
-                try {
-                  const response = await fetch('/api/export/csv', { credentials: 'include' });
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'transactions.csv';
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  setIsExportModalOpen(false);
-                } catch { showNotification('Export failed. Try again.', 'error'); }
-              }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${colors.border}`, borderRadius: '12px', cursor: 'pointer', background: colors.bgLight, transition: 'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.borderColor=colors.tealPrimary} onMouseOut={e=>e.currentTarget.style.borderColor=colors.border}>
-                <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>Comma Separated Spreadsheet (.csv)</div>
-              </div>
-              <div onClick={() => { showNotification('Excel report workbook compiled.', 'success'); setIsExportModalOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${colors.border}`, borderRadius: '12px', cursor: 'pointer', background: colors.bgLight, transition: 'all 0.2s' }} onMouseOver={e=>e.currentTarget.style.borderColor=colors.tealPrimary} onMouseOut={e=>e.currentTarget.style.borderColor=colors.border}>
-                <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, fontWeight: 600, color: colors.textDark }}>Microsoft Excel Workbook (.xlsx)</div>
-              </div>
+              {[['csv', 'Download CSV'], ['pdf', 'Download PDF']].map(([format, label]) => (
+                <button key={format} type="button" onClick={() => handleExport(format)} disabled={isExporting}
+                  style={{ padding: '16px', border: `1px solid ${colors.border}`, borderRadius: '12px', background: colors.bgLight, color: colors.textDark, fontWeight: 600, fontFamily: 'inherit', textAlign: 'left' }}>
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
         </div>

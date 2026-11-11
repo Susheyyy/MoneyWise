@@ -25,6 +25,8 @@ const goalSchema = new mongoose.Schema({
   targetDate: { type: Date },
   icon: { type: String, default: '🎯' },
   contributions: [contributionSchema],
+  archivedAt: Date,
+  refundWallet: { type: mongoose.Schema.Types.ObjectId, ref: 'Wallet' },
   milestones: {
     quarterSaved: { type: milestoneSchema, default: {} },
     halfway: { type: milestoneSchema, default: {} },

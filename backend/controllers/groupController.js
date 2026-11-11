@@ -86,6 +86,19 @@ exports.createGroup = async (req, res) => {
   }
 };
 
+// Allocate leftover paise to the largest fractional shares so the bill balances.
+const allocateShares = (totalPaise, participants) => {
+  const weightTotal = participants.reduce((sum, participant) => sum + participant.weight, 0);
+  const allocations = participants.map(({ user, weight }) => {
+    const exact = totalPaise * (weight / weightTotal);
+    return { user, paise: Math.floor(exact), remainder: exact % 1 };
+  });
+  const unallocated = totalPaise - allocations.reduce((sum, share) => sum + share.paise, 0);
+  [...allocations].sort((a, b) => b.remainder - a.remainder)
+    .slice(0, unallocated).forEach(share => { share.paise++; });
+  return allocations.map(({ user, paise }) => ({ user, paise }));
+};
+
 exports.addSharedExpense = async (req, res) => {
   try {
     const { description, amount, splitMode, splitWith } = req.body;
@@ -95,43 +108,34 @@ exports.addSharedExpense = async (req, res) => {
       return res.status(404).json({ message: 'Group workspace pool context not found.' });
     }
 
-    let participantIds = [];
     const totalAmount = Number(amount);
+    const totalPaise = Math.round(totalAmount * 100);
+    if (!Number.isSafeInteger(totalPaise) || totalPaise <= 0 || totalAmount !== totalPaise / 100) {
+      return res.status(400).json({ message: 'Enter a positive amount with at most two decimal places.' });
+    }
+    if (!['equal', 'ratio'].includes(splitMode) || !Array.isArray(splitWith) || !splitWith.length) {
+      return res.status(400).json({ message: 'Select at least one participant and a split type.' });
+    }
 
-    if (splitMode === 'equal') {
-      participantIds = group.members.map(member => member._id ? member._id.toString() : member.toString());
-    } else {
-      let rawSplits = splitWith;
-
-      if (typeof rawSplits === 'string') {
-        try {
-          rawSplits = JSON.parse(rawSplits.replace(/'/g, '"'));
-        } catch (e) {
-          return res.status(400).json({ message: 'Invalid split data format string.' });
-        }
-      }
-
-      if (Array.isArray(rawSplits) && Array.isArray(rawSplits[0])) {
-        rawSplits = rawSplits[0];
-      }
-
-      if (!rawSplits || !Array.isArray(rawSplits)) {
-        return res.status(400).json({ message: 'Missing split allocation breakdown matrix.' });
-      }
-
-      participantIds = rawSplits.map(item => {
-        if (item.user) {
-          return item.user._id ? item.user._id.toString() : item.user.toString();
-        }
-        return item.toString();
-      });
+    const members = new Set(group.members.map(String));
+    const participants = splitWith.map(entry => ({
+      user: String(entry?.user?._id ?? entry?.user ?? entry),
+      weight: splitMode === 'ratio' ? Number(entry?.ratio) : 1
+    }));
+    if (new Set(participants.map(({ user }) => user)).size !== participants.length ||
+        participants.some(({ user, weight }) => !members.has(user) || !Number.isFinite(weight) || weight <= 0)) {
+      return res.status(400).json({ message: 'Choose distinct group members with positive shares.' });
+    }
+    if (splitMode === 'ratio' && Math.abs(participants.reduce((sum, entry) => sum + entry.weight, 0) - 100) > 1e-8) {
+      return res.status(400).json({ message: 'Ratios must add up to 100%.' });
     }
 
     group.expenses.push({
       description: description.trim(),
       amount: totalAmount,
       paidBy: req.user.id,
-      splitWith: participantIds
+      splitWith: participants.map(({ user }) => user),
+      shares: allocateShares(totalPaise, participants)
     });
 
     if (!group.activityLog) group.activityLog = [];
@@ -233,23 +237,23 @@ exports.getSettlementSummary = async (req, res) => {
     const group = await Group.findOne({ _id: req.params.id, members: req.user.id }).populate('members', 'name email');
     if (!group) return res.status(404).json({ message: 'Group workspace matrix container not found.' });
 
-    const balances = {};
-    group.members.forEach(m => { balances[m._id] = 0; });
+    const balances = Object.fromEntries(group.members.map(member => [String(member._id), 0]));
 
-    group.expenses.forEach(exp => {
-      const payer = exp.paidBy.toString();
-      if (balances[payer] !== undefined) balances[payer] += exp.amount;
+    for (const expense of group.expenses) {
+      const payer = String(expense.paidBy);
+      const totalPaise = Math.round(expense.amount * 100);
+      if (balances[payer] === undefined) continue;
 
-      const splitParticipants = exp.splitWith && exp.splitWith.length > 0 ? exp.splitWith : group.members;
-      const share = exp.amount / splitParticipants.length;
-
-      splitParticipants.forEach(userIdObj => {
-        const debtor = userIdObj.toString();
-        if (balances[debtor] !== undefined) {
-          balances[debtor] -= share;
-        }
-      });
-    });
+      const participants = expense.splitWith?.length ? expense.splitWith : Object.keys(balances);
+      const shares = expense.shares?.length ? expense.shares : allocateShares(
+        totalPaise, participants.map(user => ({ user, weight: 1 }))
+      );
+      balances[payer] += totalPaise;
+      for (const { user, paise } of shares) {
+        if (balances[user] !== undefined) balances[user] -= paise;
+        else balances[payer] -= paise;
+      }
+    }
 
     const creditors = [];
     const debtors = [];
@@ -268,25 +272,25 @@ exports.getSettlementSummary = async (req, res) => {
       const debtor = debtors[dIdx];
       const settledAmount = Math.min(creditor.amount, debtor.amount);
 
-      if (Math.round(settledAmount) > 0) {
+      if (settledAmount > 0) {
         simpleSettlementPaths.push({
           from: debtor.user.name,
           fromId: debtor.user._id,
           to: creditor.user.name,
           toId: creditor.user._id,
-          amount: Math.round(settledAmount)
+          amount: settledAmount / 100
         });
       }
 
       creditor.amount -= settledAmount;
       debtor.amount -= settledAmount;
 
-      if (Math.round(creditor.amount) <= 0) cIdx++;
-      if (Math.round(debtor.amount) <= 0) dIdx++;
+      if (creditor.amount === 0) cIdx++;
+      if (debtor.amount === 0) dIdx++;
     }
 
     res.status(200).json({
-      netBalances: balances,
+      netBalances: Object.fromEntries(Object.entries(balances).map(([user, paise]) => [user, paise / 100])),
       simplestWayToSettle: simpleSettlementPaths,
       activityLog: group.activityLog || []
     });

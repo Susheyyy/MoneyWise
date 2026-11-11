@@ -16,14 +16,19 @@ const SavingsGoals = () => {
   const { data: dbWallets = [] } = useGetWalletsQuery();
   const [createGoal] = useCreateGoalMutation();
   const [addContribution] = useAddContributionMutation();
-  const [deleteGoal] = useDeleteGoalMutation();
+  const [deleteGoal, { isLoading: isArchiving }] = useDeleteGoalMutation();
 
   const [activeTab, setActiveTab] = useState('all');
+  const { data: archivedGoals = [], isFetching: archivesLoading, isError: archivesError } = useGetGoalsQuery(
+    { archived: true }, { skip: activeTab !== 'archived' }
+  );
   const [isNewGoalModalOpen, setIsNewGoalModalOpen] = useState(false);
   const [isAddFundsModalOpen, setIsAddFundsModalOpen] = useState(false);
   
   
   const [selectedGoal, setSelectedGoal] = useState(null);
+  const [archiveGoal, setArchiveGoal] = useState(null);
+  const [refundWalletId, setRefundWalletId] = useState('');
 
   
   const [goalName, setGoalName] = useState('');
@@ -69,7 +74,7 @@ const SavingsGoals = () => {
   const totalMonthlyCommitment = activeGoals.reduce((sum, g) => sum + g.monthlySavingsTarget, 0);
 
   
-  const filteredGoals = dbGoals.filter(g => {
+  const filteredGoals = activeTab === 'archived' ? archivedGoals : dbGoals.filter(g => {
     if (activeTab === 'completed') return g.currentSaved >= g.targetAmount;
     if (activeTab === 'all') return true;
     
@@ -127,15 +132,16 @@ const handleCreateGoal = async (e) => {
     }
   };
 
-  const handleClearGoal = async (id) => {
-    if (window.confirm('Wipe this asset tracker profile? Operational records cannot be recovered.')) {
-      try {
-        await deleteGoal(id).unwrap();
-        triggerToast('Objective tracking framework scrubbed.');
-        setSelectedGoal(null);
-      } catch (err) {
-        triggerToast('Failed to drop data mapping properties.');
-      }
+  const handleArchiveGoal = async (event) => {
+    event.preventDefault();
+    if (isArchiving) return;
+    try {
+      await deleteGoal({ goalId: archiveGoal._id, refundWalletId }).unwrap();
+      triggerToast(archiveGoal.currentSaved > 0 ? 'Goal archived and savings moved to your wallet.' : 'Goal archived.');
+      setArchiveGoal(null);
+      setSelectedGoal(null);
+    } catch (err) {
+      triggerToast(getErrorMessage(err, 'Could not archive the goal.'));
     }
   };
 
@@ -146,6 +152,31 @@ const handleCreateGoal = async (e) => {
   return (
     <div style={{ background: colors.background, padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: '32px', minHeight: '100%', fontFamily: "'Montserrat', sans-serif" }}>
       
+      {archiveGoal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.45)', display: 'grid', placeItems: 'center', padding: '16px' }}>
+          <form role="dialog" aria-modal="true" aria-labelledby="archive-goal-title" onSubmit={handleArchiveGoal}
+            style={{ background: colors.cardBg, color: colors.textPrimary, padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '420px', boxSizing: 'border-box' }}>
+            <h3 id="archive-goal-title">Archive {archiveGoal.name}?</h3>
+            {archiveGoal.currentSaved > 0 && (
+              <label style={{ display: 'grid', gap: '8px' }}>
+                Move ₹{archiveGoal.currentSaved.toLocaleString('en-IN')} to
+                <select value={refundWalletId} onChange={event => setRefundWalletId(event.target.value)} required disabled={isArchiving}>
+                  <option value="">Choose a wallet</option>
+                  {dbWallets.map(wallet => <option key={wallet._id} value={wallet._id}>{wallet.name}</option>)}
+                </select>
+                {dbWallets.length === 0 && <small>Create a wallet in Settings before archiving this goal.</small>}
+              </label>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
+              <button type="button" disabled={isArchiving} onClick={() => setArchiveGoal(null)}>Cancel</button>
+              <button type="submit" disabled={isArchiving || (archiveGoal.currentSaved > 0 && !refundWalletId)}>
+                {isArchiving ? 'Archiving…' : 'Archive goal'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {toast.show && (
         <div style={{ position: 'fixed', top: '24px', right: '24px', background: uiColors.lightGreen, borderLeft: `4px solid ${uiColors.accentGreen}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(30,51,54,0.1)', zIndex: 10000, color: uiColors.darkGreen, fontWeight: 600, fontSize: '0.85rem' }}>
           <span>{toast.message}</span>
@@ -187,7 +218,7 @@ const handleCreateGoal = async (e) => {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', borderBottom: `1px solid ${uiColors.border}`, paddingBottom: '12px' }}>
-            {['all', 'on_track', 'at_risk', 'completed'].map((tab) => (
+            {['all', 'on_track', 'at_risk', 'completed', 'archived'].map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '6px 16px', borderRadius: '20px', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: activeTab === tab ? uiColors.lightGreen : 'transparent', color: activeTab === tab ? uiColors.darkGreen : uiColors.tealPrimary }}>
                 {tab.replace('_', ' ').toUpperCase()}
               </button>
@@ -196,6 +227,9 @@ const handleCreateGoal = async (e) => {
 
           {}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {activeTab === 'archived' && !filteredGoals.length && (
+              <p>{archivesLoading ? 'Loading archived goals…' : archivesError ? 'Archived goals are unavailable.' : 'No archived goals yet.'}</p>
+            )}
             {filteredGoals.map((g) => {
               const currentPct = Math.round((g.currentSaved / g.targetAmount) * 100) || 0;
               return (
@@ -229,7 +263,11 @@ const handleCreateGoal = async (e) => {
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: uiColors.tealDark }}>{selectedGoal.name}</h3>
               </div>
             </div>
-            <button onClick={() => handleClearGoal(selectedGoal._id)} style={{ background: 'rgba(163,45,45,0.08)', color: uiColors.redText, border: 'none', padding: '6px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Drop Objective</button>
+            {selectedGoal.archivedAt ? (
+              <span>Archived {new Date(selectedGoal.archivedAt).toLocaleDateString('en-IN')}</span>
+            ) : (
+              <button onClick={() => { setArchiveGoal(selectedGoal); setRefundWalletId(''); }} style={{ background: 'rgba(163,45,45,0.08)', color: uiColors.redText, border: 'none', padding: '6px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Archive goal</button>
+            )}
           </div>
 
           {/* HUD MONITOR CHIPS */}
@@ -297,7 +335,7 @@ const handleCreateGoal = async (e) => {
             </div>
 
             {}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {!selectedGoal.archivedAt && <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <span style={{ fontSize: '10px', fontWeight: 700, color: uiColors.textMuted, textTransform: 'uppercase', letterSpacing: '1px' }}>FORECAST</span>
               <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '12px', padding: '20px', background: '#FAFCFC', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
@@ -310,7 +348,7 @@ const handleCreateGoal = async (e) => {
                   Add funds
                 </button>
               </div>
-            </div>
+            </div>}
 
           </div>
         </>

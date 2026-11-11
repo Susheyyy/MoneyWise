@@ -17,21 +17,10 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
   
   const { colors, fontSizeMultiplier } = useTheme();
 
-  if (isLoading) {
-    return <div style={{ padding: '40px', color: colors.textPrimary, fontWeight: '600' }}>Synchronizing intelligence matrix...</div>;
-  }
-
   const totalExpenses = summary?.totalExpenses || 0;
-  const budgetLimit = categories.reduce((sum, cat) => sum + (Number(cat.monthlyBudget) || 0), 0);
+  const budgetLimit = categories.reduce((sum, cat) => sum + (Number(cat.budget) || 0), 0);
   const rawPercentage = budgetLimit > 0 ? (totalExpenses / budgetLimit) * 100 : 0;
   const usedPercentage = Math.min(Math.round(rawPercentage), 100);
-
-  const categorySpentMap = {};
-  categories.forEach(cat => {
-    categorySpentMap[cat._id] = expenses
-      .filter(e => e.category?._id === cat._id && e.type === 'expense')
-      .reduce((sum, e) => sum + e.amount, 0);
-  });
 
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -179,15 +168,17 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
           {[
             { label: 'Total Active Expenses', value: `₹${totalExpenses.toLocaleString('en-IN')}`, progress: usedPercentage, color: colors.red },
-            { label: 'Month-End Forecast', value: `₹${intelligence?.summary?.forecastedTotalSpent?.toLocaleString('en-IN') || 0}`, progress: 50, color: colors.tealPrimary },
-            { label: 'Financial Health Index', value: `${intelligence?.summary?.healthScore || 0} / 100`, progress: intelligence?.summary?.healthScore || 0, color: colors.amber }
+            { label: 'Next-month forecast', value: intelligence?.forecast == null ? '—' : `₹${intelligence.forecast.toLocaleString('en-IN')}` },
+            { label: 'Financial Health Index', value: intelligence?.healthScore == null ? '—' : `${intelligence.healthScore} / 100`, progress: intelligence?.healthScore, color: colors.amber }
           ].map((stat, idx) => (
             <div key={idx} style={{ background: colors.cardBg, borderRadius: '18px', padding: '24px', border: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
               <div style={{ fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textMuted, fontWeight: 500 }}>{stat.label}</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.8 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.textDark }}>{stat.value}</div>
-              <div style={{ height: '6px', background: colors.bgLight, borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${stat.progress}%`, background: stat.color, borderRadius: '3px' }} />
-              </div>
+              {stat.progress != null && (
+                <div style={{ height: '6px', background: colors.bgLight, borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${stat.progress}%`, background: stat.color, borderRadius: '3px' }} />
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -262,7 +253,7 @@ const AnalyticsDashboard = ({ summary, expenses, categories }) => {
             <div style={{ fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: colors.tealPrimary }}>Smart Intelligence</div>
           </div>
           <div style={{ fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textPrimary, lineHeight: '1.6', fontWeight: 500 }}>
-            {intelligence?.insights?.[0]?.message || 'Add transactions and budgets to see insights.'}
+            {intelligence?.recommendations?.[0] || (isLoading ? 'Loading insights…' : 'Insights are unavailable.')}
           </div>
         </div>
       </aside>

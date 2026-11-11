@@ -1,8 +1,10 @@
 import { fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { logout } from '../features/auth/authSlice';
 
+export const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
+
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+  baseUrl: API_BASE_URL,
   credentials: 'include',
 });
 
@@ -16,7 +18,6 @@ export const baseQueryWithAuth = async (args, api, extraOptions) => {
     window.location.pathname !== '/login'
   ) {
     api.dispatch(logout());
-    window.location.href = '/login';
   }
   return result;
 };

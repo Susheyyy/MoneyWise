@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   useLoginMutation, 
   useSignupMutation, 
@@ -13,6 +13,10 @@ import { getErrorMessage } from '../../utils/errorHandler';
 
 const LoginSignup = ({ initialIsLogin = true }) => {
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const returnTo = typeof state?.returnTo === 'string' && /^\/join-group\/[a-f0-9]{32}$/.test(state.returnTo)
+    ? state.returnTo
+    : '/dashboard';
   const dispatch = useDispatch();
   
   const [viewState, setViewState] = useState(initialIsLogin ? 'login' : 'signup');
@@ -61,8 +65,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
       if (viewState === 'login') {
         const data = await login({ email: formData.email, password: formData.password }).unwrap();
         dispatch(setCredentials({ user: data.user }));
-        triggerToast('Authentication verified! Redirecting...', 'success');
-        setTimeout(() => navigate('/dashboard'), 1000);
+        navigate(returnTo, { replace: true });
       } else {
         await signup({ name: formData.name, email: formData.email, password: formData.password }).unwrap();
         setRegisteredEmail(formData.email);
@@ -84,14 +87,8 @@ const LoginSignup = ({ initialIsLogin = true }) => {
 
     try {
       const data = await verifyEmail({ email: registeredEmail, code: verificationCode }).unwrap();
-      triggerToast('Security token authorized successfully!', 'success');
-      
       dispatch(setCredentials({ user: data.user }));
-      
-      setTimeout(() => {
-        setViewState('login');
-        navigate('/dashboard');
-      }, 1500);
+      navigate(returnTo, { replace: true });
     } catch (err) {
       triggerToast(getErrorMessage(err, 'Verification rejected. Please re-check your inbox pin.'));
     }

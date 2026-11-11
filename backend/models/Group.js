@@ -11,6 +11,11 @@ const groupSchema = new mongoose.Schema({
     amount: { type: Number, required: true },
     paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     splitWith: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    shares: [{
+      _id: false,
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+      paise: { type: Number, required: true }
+    }],
     date: { type: Date, default: Date.now }
   }],
   activityLog: [{

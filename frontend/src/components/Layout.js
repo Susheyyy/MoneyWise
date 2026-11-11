@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { logout, updateUser } from '../features/auth/authSlice';
-import { useUpdateProfileMutation } from '../features/auth/authApi';
+import { updateUser } from '../features/auth/authSlice';
+import { useSignOut, useUpdateProfileMutation } from '../features/auth/authApi';
 import { useTheme } from '../context/ThemeContext';
 
 const NAV_ITEMS = [
@@ -142,9 +142,13 @@ const Layout = ({ children }) => {
   const activeNavItem = NAV_ITEMS.find(item => item.path === currentPath);
   const pageTitle = activeNavItem?.label || 'Dashboard';
 
-  const handleSignOut = () => {
-    if (window.confirm('Are you sure you want to sign out?')) {
-      dispatch(logout());
+  const [signOut, isSigningOut] = useSignOut();
+  const handleSignOut = async () => {
+    if (isSigningOut || !window.confirm('Are you sure you want to sign out?')) return;
+    try {
+      await signOut();
+    } catch {
+      window.alert('Could not sign out. Please try again.');
     }
   };
 

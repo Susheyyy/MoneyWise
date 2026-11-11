@@ -3,6 +3,8 @@ const Wallet = require('../models/Wallet');
 const Category = require('../models/Category');
 const mongoose = require('mongoose');
 
+const monthStart = (date, offset = 0) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1));
+
 exports.getTransactions = async (req, res) => {
   try {
     const { category, type, startDate, endDate, wallet } = req.query;
@@ -28,52 +30,42 @@ exports.getTransactions = async (req, res) => {
 };
 
 exports.updateTransaction = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
   try {
-    const txnId = req.params.id;
-    const oldTxn = await Transaction.findOne({ _id: txnId, user: req.user.id }).session(session);
-    
-    if (!oldTxn) throw new Error('Transaction not found');
-    
-    const { description, amount, category, wallet, type, paymentMode, tags, billUrl, date } = req.body;
-    
-    if (category && category !== oldTxn.category?.toString()) {
-      const targetCategory = await Category.findOne({ _id: category, user: req.user.id }).session(session);
-      if (!targetCategory) throw new Error('Target category not found or unauthorized');
-    }
-    
-    const oldWallet = await Wallet.findOne({ _id: oldTxn.wallet, user: req.user.id }).session(session);
-    if (oldWallet) {
-      const oldNumericalMutation = oldTxn.type === 'income' ? -oldTxn.amount : oldTxn.amount;
-      oldWallet.balance += oldNumericalMutation;
-      await oldWallet.save({ session });
-    }
+    const user = req.user.id;
+    const { description, amount, category, wallet, type, paymentMode, tags, billUrl, date, notes, isSharedExpense } = req.body;
+    const updatedTxn = await mongoose.connection.transaction(async session => {
+      const txn = await Transaction.findOne({ _id: req.params.id, user }).session(session);
+      if (!txn) throw new Error('Transaction not found');
 
-    
-    const newWalletId = wallet || oldTxn.wallet;
-    const newWallet = await Wallet.findOne({ _id: newWalletId, user: req.user.id }).session(session);
-    if (newWallet) {
-      const newAmount = amount !== undefined ? amount : oldTxn.amount;
-      const newType = type || oldTxn.type;
-      const newNumericalMutation = newType === 'income' ? newAmount : -newAmount;
-      newWallet.balance += newNumericalMutation;
-      await newWallet.save({ session });
-    }
+      const previousWallet = txn.wallet;
+      const previousImpact = txn.type === 'income' ? txn.amount : -txn.amount;
+      const updates = { description, amount, category, wallet, type, paymentMode, tags, billUrl, date, notes, isSharedExpense };
+      for (const [field, value] of Object.entries(updates)) {
+        if (value !== undefined) txn.set(field, value);
+      }
+      await txn.validate();
 
-    
-    const updatedTxn = await Transaction.findOneAndUpdate(
-      { _id: txnId, user: req.user.id },
-      { description, amount, category, wallet, type, paymentMode, tags, billUrl, date },
-      { new: true, session }
-    );
+      if (txn.isModified('category')) {
+        const targetCategory = await Category.findOne({ _id: txn.category, user }).session(session);
+        if (!targetCategory) throw new Error('Target category not found or unauthorized');
+      }
 
-    await session.commitTransaction();
-    session.endSession();
+      const walletChanged = txn.isModified('wallet');
+      const targetWallet = await Wallet.findOne({ _id: txn.wallet, user }).session(session);
+      if (walletChanged && !targetWallet) throw new Error('Target wallet not found or unauthorized');
+
+      const newImpact = txn.type === 'income' ? txn.amount : -txn.amount;
+      if (walletChanged) {
+        await Wallet.updateOne({ _id: previousWallet, user }, { $inc: { balance: -previousImpact } }, { session });
+      }
+      const balanceChange = walletChanged ? newImpact : newImpact - previousImpact;
+      if (targetWallet && balanceChange !== 0) {
+        await Wallet.updateOne({ _id: targetWallet._id, user }, { $inc: { balance: balanceChange } }, { session });
+      }
+      return txn.save({ session });
+    });
     res.json(updatedTxn);
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
     res.status(400).json({ message: err.message });
   }
 };
@@ -107,11 +99,10 @@ exports.deleteTransaction = async (req, res) => {
 exports.getMonthlySummary = async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id);
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const now = new Date();
 
     const stats = await Transaction.aggregate([
-      { $match: { user: userId, date: { $gte: sixMonthsAgo } } },
+      { $match: { user: userId, date: { $gte: monthStart(now, -5), $lte: now } } },
       {
         $group: {
           _id: { month: { $month: "$date" }, year: { $year: "$date" }, type: "$type" },
@@ -130,10 +121,9 @@ exports.getCategoryBreakdown = async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id);
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const stats = await Transaction.aggregate([
-      { $match: { user: userId, type: 'expense', date: { $gte: startOfMonth } } },
+      { $match: { user: userId, type: 'expense', date: { $gte: monthStart(now), $lt: monthStart(now, 1) } } },
       {
         $group: {
           _id: "$category",
@@ -148,10 +138,10 @@ exports.getCategoryBreakdown = async (req, res) => {
           as: "categoryDetails"
         }
       },
-      { $unwind: "$categoryDetails" },
+      { $unwind: { path: "$categoryDetails", preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          name: "$categoryDetails.name",
+          name: { $ifNull: ["$categoryDetails.name", "Deleted category"] },
           color: "$categoryDetails.color",
           total: 1
         }
@@ -183,10 +173,10 @@ exports.getWalletDistribution = async (req, res) => {
           as: "walletDetails"
         }
       },
-      { $unwind: "$walletDetails" },
+      { $unwind: { path: "$walletDetails", preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          name: "$walletDetails.name",
+          name: { $ifNull: ["$walletDetails.name", "Deleted wallet"] },
           type: "$walletDetails.type",
           totalIncome: 1,
           totalExpense: 1
@@ -202,7 +192,7 @@ exports.createTransaction = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { description, amount, category, wallet, type, paymentMode, tags, billUrl, date } = req.body;
+    const { description, amount, category, wallet, type, paymentMode, tags, billUrl, date, notes, isSharedExpense } = req.body;
 
     const targetWallet = await Wallet.findOne({ _id: wallet, user: req.user.id }).session(session);
     if (!targetWallet) throw new Error('Target funding wallet context not found');
@@ -211,11 +201,11 @@ exports.createTransaction = async (req, res) => {
     if (!targetCategory) throw new Error('Target category not found or unauthorized');
 
     const txn = new Transaction({
-      user: req.user.id, wallet, category, description, amount, type, paymentMode, tags, billUrl, date
+      user: req.user.id, wallet, category, description, amount, type, paymentMode, tags, billUrl, date, notes, isSharedExpense
     });
     await txn.save({ session });
 
-    const numericalMutation = type === 'income' ? amount : -amount;
+    const numericalMutation = txn.type === 'income' ? txn.amount : -txn.amount;
     targetWallet.balance += numericalMutation;
     await targetWallet.save({ session });
 
@@ -233,9 +223,8 @@ exports.getAnalyticsSummary = async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id);
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const stats = await Transaction.aggregate([
-      { $match: { user: userId, date: { $gte: startOfMonth } } },
+      { $match: { user: userId, date: { $gte: monthStart(now), $lt: monthStart(now, 1) } } },
       {
         $group: {
           _id: '$type',

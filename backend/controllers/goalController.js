@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 
 exports.getGoals = async (req, res) => {
   try {
-    const goals = await Goal.find({ user: req.user.id }).sort({ createdAt: -1 });
+    const archivedAt = req.query.archived === 'true' ? { $ne: null } : null;
+    const goals = await Goal.find({ user: req.user.id, archivedAt }).sort({ createdAt: -1 });
     res.status(200).json(goals);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -40,7 +41,7 @@ exports.createGoal = async (req, res) => {
 exports.updateGoal = async (req, res) => {
   try {
     const { name, targetAmount, monthlySavings, category, notes, targetDate } = req.body;
-    const goal = await Goal.findOne({ _id: req.params.id, user: req.user.id });
+    const goal = await Goal.findOne({ _id: req.params.id, user: req.user.id, archivedAt: null });
     if (!goal) return res.status(404).json({ message: 'Goal not found' });
 
     if (name) goal.name = name.trim();
@@ -64,11 +65,11 @@ exports.addContribution = async (req, res) => {
     const { amount, walletId, walletName, note } = req.body;
     const contributionAmount = Number(amount);
 
-    if (!contributionAmount || contributionAmount <= 0) {
+    if (!Number.isFinite(contributionAmount) || contributionAmount <= 0) {
       throw new Error('Contribution amount must be greater than zero');
     }
 
-    const goal = await Goal.findOne({ _id: req.params.id, user: req.user.id }).session(session);
+    const goal = await Goal.findOne({ _id: req.params.id, user: req.user.id, archivedAt: null }).session(session);
     if (!goal) throw new Error('Goal not found');
 
     // Deduct from wallet if walletId is provided
@@ -119,10 +120,34 @@ exports.addContribution = async (req, res) => {
 
 exports.deleteGoal = async (req, res) => {
   try {
-    const goal = await Goal.findOneAndDelete({ _id: req.params.id, user: req.user.id });
-    if (!goal) return res.status(404).json({ message: 'Goal not found' });
-    res.status(200).json({ message: 'Goal removed' });
+    const user = req.user.id;
+    const { refundWalletId } = req.body || {};
+    const result = await mongoose.connection.transaction(async session => {
+      const goal = await Goal.findOne({ _id: req.params.id, user }).session(session);
+      if (!goal) return { status: 404, message: 'Goal not found' };
+      if (goal.archivedAt) return { status: 200, message: 'Goal already archived' };
+      if (!Number.isFinite(goal.currentSaved) || goal.currentSaved < 0) {
+        return { status: 409, message: 'The saved balance must be corrected before archiving this goal.' };
+      }
+
+      if (goal.currentSaved > 0) {
+        if (!refundWalletId) return { status: 409, message: 'Choose a wallet to receive the saved balance.' };
+        const wallet = await Wallet.findOne({ _id: refundWalletId, user }).session(session);
+        if (!wallet) return { status: 400, message: 'Refund wallet not found.' };
+        const updatedBalance = wallet.balance + goal.currentSaved;
+        if (!Number.isFinite(updatedBalance)) return { status: 409, message: 'The refund wallet has an invalid balance.' };
+        wallet.balance = updatedBalance;
+        await wallet.save({ session });
+        goal.refundWallet = wallet._id;
+      }
+
+      goal.archivedAt = new Date();
+      await goal.save({ session });
+      return { status: 200, message: 'Goal archived' };
+    });
+    res.status(result.status).json({ message: result.message });
   } catch (err) {
+    if (err.name === 'CastError') return res.status(400).json({ message: 'Invalid goal or wallet.' });
     res.status(500).json({ message: err.message });
   }
 };

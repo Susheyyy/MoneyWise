@@ -1,8 +1,9 @@
+import { downloadTransactionExport } from '../../utils/downloadTransactionExport';
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useGetCategoriesQuery, useUpdateCategoryBudgetMutation } from '../../features/categories/categoryApi';
-import { useUpdateProfileMutation, useLogoutMutation, useGetProfileQuery } from '../../features/auth/authApi';
-import { updateUser, logout as logoutAction } from '../../features/auth/authSlice';
+import { useUpdateProfileMutation, useSignOut, useGetProfileQuery } from '../../features/auth/authApi';
+import { updateUser } from '../../features/auth/authSlice';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -11,7 +12,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   const currentUser = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   const [updateProfileApi] = useUpdateProfileMutation();
-  const [logoutApi] = useLogoutMutation();
+  const [signOut, isSigningOut] = useSignOut();
   
   const { data: dbCategories = [], isLoading: catsLoading } = useGetCategoriesQuery();
   const [updateCategoryBudget] = useUpdateCategoryBudgetMutation();
@@ -336,10 +337,10 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                   
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0', borderBottom: '1px solid #F8ECEC' }}>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Export all data</div>
-                      <div style={{ fontSize: '12px', color: '#9BB5B8', marginTop: '4px' }}>Download everything as a JSON backup</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Export transactions</div>
+                      <div style={{ fontSize: '12px', color: '#9BB5B8', marginTop: '4px' }}>Download your transaction history as CSV</div>
                     </div>
-                    <button type="button" onClick={() => showNotification('Backup archive triggered.', 'success')} style={{ padding: '8px 18px', background: uiColors.bgLight, border: '1px solid #E0E8E8', borderRadius: '10px', color: '#6B8B8E', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Export</button>
+                    <button type="button" onClick={() => setActiveMenu('Export')} style={{ padding: '8px 18px', background: uiColors.bgLight, border: '1px solid #E0E8E8', borderRadius: '10px', color: '#6B8B8E', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Export</button>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0', borderBottom: '1px solid #F8ECEC' }}>
@@ -567,19 +568,11 @@ const ProfileSettings = ({ onBackToDashboard }) => {
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Export Transaction History Data</h3>
               <button type="button" onClick={async () => {
                 try {
-                  showNotification('Exporting transactions...', 'success');
-                  const response = await fetch('/api/export/csv', { credentials: 'include' });
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'transactions_export.csv';
-                  a.click();
-                  window.URL.revokeObjectURL(url);
+                  await downloadTransactionExport('csv');
                 } catch {
-                  showNotification('Export failed.', 'error');
+                  showNotification('Export failed. Try again.', 'error');
                 }
-              }} style={{ padding: '11px 22px', background: uiColors.tealPrimary, border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Download JSON Workbook Backup</button>
+              }} style={{ padding: '11px 22px', background: uiColors.tealPrimary, border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Download transaction CSV</button>
             </div>
           )}
 
@@ -591,19 +584,17 @@ const ProfileSettings = ({ onBackToDashboard }) => {
               <div style={{ border: `1px solid ${uiColors.border}`, borderRadius: '8px', padding: '16px', display: 'flex', alignItems: 'center', justifyRules: 'space-between', justifyContent: 'space-between', background: uiColors.bgLight }}>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: '#A32D2D' }}>Terminate account access profile session</div>
-                  <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>Clears local encrypted authorization storage vectors to sign out.</div>
+                  <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>Ends your session on this device.</div>
                 </div>
                 <button 
                   type="button"
+                  disabled={isSigningOut}
                   onClick={async () => {
-                    if (window.confirm('Are you certain you want to sign out?')) {
-                      showNotification('Clearing authorizations keys...', 'success');
-                      try {
-                        await logoutApi().unwrap();
-                      } catch (err) {
-                        console.error('Logout error', err);
-                      }
-                      dispatch(logoutAction());
+                    if (!window.confirm('Are you sure you want to sign out?')) return;
+                    try {
+                      await signOut();
+                    } catch {
+                      showNotification('Could not sign out. Please try again.', 'error');
                     }
                   }}
                   style={{ padding: '8px 16px', background: uiColors.redBg, border: '1px solid #F5BFBF', borderRadius: '6px', color: uiColors.redText, fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}

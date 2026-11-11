@@ -7,7 +7,7 @@ export const goalApi = createApi({
   tagTypes: ['Goal', 'Summary', 'Wallet'],
   endpoints: (builder) => ({
     getGoals: builder.query({
-      query: () => '/api/goals',
+      query: (filters) => ({ url: '/api/goals', params: filters }),
       providesTags: ['Goal'],
     }),
     createGoal: builder.mutation({
@@ -36,9 +36,10 @@ export const goalApi = createApi({
       invalidatesTags: ['Goal', 'Summary', 'Wallet'],
     }),
     deleteGoal: builder.mutation({
-      query: (goalId) => ({
+      query: ({ goalId, refundWalletId }) => ({
         url: `/api/goals/${goalId}`,
         method: 'DELETE',
+        body: { refundWalletId },
       }),
       invalidatesTags: ['Goal'],
     }),

@@ -1,7 +1,6 @@
 const Transaction = require('../models/Transaction');
 const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
-const mongoose = require('mongoose');
 
 exports.exportCSV = async (req, res) => {
   try {
@@ -36,16 +35,16 @@ exports.exportPDF = async (req, res) => {
     const doc = new PDFDocument();
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=report.pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=transactions.pdf');
     
     doc.pipe(res);
 
-    doc.fontSize(20).text('Monthly Finance Report', { align: 'center' });
+    doc.fontSize(20).text('Transaction History', { align: 'center' });
     doc.moveDown();
 
     transactions.forEach(txn => {
       doc.fontSize(12).text(
-        `${new Date(txn.date).toLocaleDateString()} - ${txn.description} - $${txn.amount} (${txn.type})`
+        `${new Date(txn.date).toISOString().slice(0, 10)} - ${txn.description} - INR ${txn.amount} (${txn.type})`
       );
     });
 

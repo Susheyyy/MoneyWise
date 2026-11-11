@@ -5,11 +5,17 @@ const aiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 exports.generateIntelligenceMetrics = async (req, res) => {
   try {
-    const transactions = await Transaction.find({ user: req.user.id }).lean();
+    const transactions = await Transaction.find({ user: req.user.id })
+      .select('date description amount type category -_id')
+      .populate('category', 'name')
+      .lean();
     const flaskResponse = await fetch(`${process.env.FLASK_URL || 'http://127.0.0.1:5001'}/api/intelligence/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(transactions)
+      body: JSON.stringify(transactions.map(transaction => ({
+        ...transaction,
+        category: transaction.category?.name || 'Uncategorized'
+      })))
     });
 
     if (!flaskResponse.ok) {

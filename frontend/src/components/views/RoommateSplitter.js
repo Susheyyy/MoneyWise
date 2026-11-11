@@ -177,15 +177,15 @@ const RoommateSplitter = () => {
     e.preventDefault();
     if (!title.trim() || !amount) return;
 
-    let splitPayload = [];
+    if (selectedParticipants.length === 0) {
+      showNotification('Select at least one participant.', 'error');
+      return;
+    }
+
+    let splitPayload;
     
     if (splitMode === 'equal') {
-      const equalPercentage = 100 / selectedParticipants.length;
-      splitPayload = selectedParticipants.map(id => ({
-        user: id,
-        ratio: equalPercentage,
-        amountOwed: Number(amount) / selectedParticipants.length
-      }));
+      splitPayload = selectedParticipants.map(user => ({ user }));
     } else {
       const activeRatioIds = selectedParticipants.filter(id => Number(customRatios[id] || 0) > 0);
       
@@ -195,15 +195,14 @@ const RoommateSplitter = () => {
       }
 
       const totalRatio = activeRatioIds.reduce((sum, id) => sum + Number(customRatios[id] || 0), 0);
-      if (totalRatio !== 100) {
+      if (Math.abs(totalRatio - 100) > 1e-8) {
         showNotification('Total proportions must equal exactly 100% (Current: ' + totalRatio + '%).', 'error');
         return;
       }
 
       splitPayload = activeRatioIds.map(id => ({
         user: id,
-        ratio: Number(customRatios[id] || 0),
-        amountOwed: Number(amount) * (Number(customRatios[id] || 0) / 100)
+        ratio: Number(customRatios[id])
       }));
     }
 
@@ -249,7 +248,7 @@ const RoommateSplitter = () => {
             </div>
             <form onSubmit={handleExpenseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <input type="text" placeholder="Bill Title (e.g. WiFi)" value={title} onChange={(e) => setTitle(e.target.value)} required style={{ width: '100%', padding: '10px 12px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '12px', boxSizing: 'border-box' }} />
-              <input type="number" placeholder="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ width: '100%', padding: '10px 12px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '12px', boxSizing: 'border-box' }} />
+              <input type="number" min="0.01" step="0.01" placeholder="Amount (₹)" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ width: '100%', padding: '10px 12px', border: `1px solid ${uiColors.border}`, borderRadius: '8px', fontSize: '12px', boxSizing: 'border-box' }} />
               
               <div style={{ display: 'flex', gap: '4px', background: uiColors.bgMain, padding: '4px', borderRadius: '8px' }}>
                 <button type="button" onClick={() => setSplitMode('equal')} style={{ flex: 1, border: 'none', background: splitMode === 'equal' ? '#fff' : 'transparent', padding: '6px', fontSize: '11px', fontWeight: 600, borderRadius: '6px', cursor: 'pointer' }}>Equal</button>
@@ -277,6 +276,7 @@ const RoommateSplitter = () => {
                       {splitMode === 'ratio' && isChecked && (
                         <input 
                           type="number" 
+                          min="0" max="100" step="any"
                           placeholder="%" 
                           value={customRatios[m._id] || ''} 
                           onChange={(e) => setCustomRatios({ ...customRatios, [m._id]: e.target.value })} 

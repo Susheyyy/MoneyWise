@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginSignup from './features/auth/LoginSignup';
 import LandingPage from './components/views/LandingPage';
@@ -20,14 +20,15 @@ import AiAnalysis from './components/views/AiAnalysis';
 
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  const { pathname } = useLocation();
+  return isAuthenticated ? children : <Navigate to="/login" replace state={{ returnTo: pathname }} />;
 };
 
 function App() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const { data: summary, isLoading: summaryLoading } = useGetSummaryQuery(undefined, { skip: !isAuthenticated });
-  const { data: categories = [], isLoading: catsLoading } = useGetCategoriesQuery(undefined, { skip: !isAuthenticated });
-  const { data: expenses = [], isLoading: txnsLoading } = useGetTransactionsQuery(undefined, { skip: !isAuthenticated });
+  const { currentData: summary, isLoading: summaryLoading } = useGetSummaryQuery(undefined, { skip: !isAuthenticated });
+  const { currentData: categories = [], isLoading: catsLoading } = useGetCategoriesQuery(undefined, { skip: !isAuthenticated });
+  const { currentData: expenses = [], isLoading: txnsLoading } = useGetTransactionsQuery(undefined, { skip: !isAuthenticated });
 
   const dynamicSyncLoading = summaryLoading || catsLoading || txnsLoading;
 

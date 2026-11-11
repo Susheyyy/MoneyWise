@@ -1,5 +1,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
+import { useDispatch } from 'react-redux';
 import { baseQueryWithAuth } from '../../api/baseQuery';
+import { logout } from './authSlice';
 
 export const authApi = createApi({
   reducerPath: 'authApi',
@@ -33,3 +35,13 @@ forgotPassword: builder.mutation({
 });
 
 export const { useGetProfileQuery, useLoginMutation, useSignupMutation, useVerifyEmailMutation, useForgotPasswordMutation, useResetPasswordMutation, useUpdateProfileMutation, useLogoutMutation } = authApi;
+
+export const useSignOut = () => {
+  const dispatch = useDispatch();
+  const [endSession, { isLoading }] = useLogoutMutation();
+  const signOut = async () => {
+    await endSession().unwrap();
+    dispatch(logout());
+  };
+  return [signOut, isLoading];
+};
