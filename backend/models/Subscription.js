@@ -6,6 +6,7 @@ const subscriptionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
   nextBillingDate: { type: Date, required: true },
+  billingDay: String,
   category: { type: String, default: 'Entertainment' },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });

@@ -24,7 +24,7 @@ function mockGroupEntries(t, entries) {
     async *cursor() { yield* entries; },
   }));
   t.mock.method(GroupEntry, 'create', async rows => {
-    entries.push(...rows);
+    entries.push(...rows.map(row => ({ ...row, createdAt: new Date() })));
     return rows;
   });
 }
@@ -63,6 +63,8 @@ test('settlements honor selected members, ratios, and exact paise', async t => {
   const settled = response();
   await getSettlementSummary(request, settled);
   assert.deepEqual(settled.data.simplestWayToSettle, []);
+  assert.ok(settled.data.activityLog.some(entry => entry.text.includes('Alice added "Dinner"')));
+  assert.ok(settled.data.activityLog.some(entry => entry.text.includes('received from Bob')));
 });
 
 test('legacy split records keep their recorded participants', async t => {
@@ -132,4 +134,22 @@ test('money writes reject sub-paise amounts and legacy balances can be rounded',
   assert.equal(toPaise('1.03'), 103);
   assert.throws(() => toPaise('0.001'), /two decimal places/);
   assert.equal(toPaise(0.1 + 0.2, { legacy: true }), 30);
+});
+
+test('goal replay snapshots omit history and receive an expiration', async t => {
+  let saved;
+  t.mock.method(mongoose.connection, 'transaction', async callback => callback({}));
+  t.mock.method(Operation, 'findById', () => ({
+    session() { return this; },
+    lean: async () => saved,
+  }));
+  t.mock.method(Operation, 'create', async ([record]) => { saved = record; });
+  const request = { user: { id: 'user' }, get: () => 'deposit-key', body: { amount: 12.34 } };
+  const goal = { _id: 'goal', currentSaved: 20, contributions: [{ amount: 12.34 }] };
+  const summarize = ({ _id, currentSaved }) => ({ _id, currentSaved });
+  const receipt = await financialWrite(request, 'goal:goal', async () => goal, { summarize });
+  assert.deepEqual(receipt, { _id: 'goal', currentSaved: 20 });
+  assert.deepEqual(saved.result, receipt);
+  assert.ok(saved.expiresAt > new Date());
+  assert.deepEqual(await financialWrite(request, 'goal:goal', assert.fail, { summarize }), receipt);
 });

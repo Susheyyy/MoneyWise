@@ -12,3 +12,5 @@ The React frontend calls the Express API, which stores data in MongoDB. Spending
 The API starts after it verifies MongoDB connectivity and transaction support. `GET /health/ready` returns HTTP 503 when MongoDB is unavailable. Optional AI suggestions require both `GEMINI_API_KEY` and `GEMINI_MODEL`.
 
 Existing wallets receive a paise-rounded opening checkpoint on their first balance change after this update. Historical changes before the checkpoint cannot be reconstructed from the new wallet ledger. Older roommate groups with no recorded owner remain usable, with archiving disabled until ownership can be established.
+
+New keyed savings contributions return a compact receipt with the goal ID and saved balance. Fetch the goal to refresh its history. These receipts are retained for seven days. Replay records created before this change retain their existing lifetime.

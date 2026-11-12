@@ -5,6 +5,7 @@ import {
   useLoginMutation, 
   useSignupMutation, 
   useVerifyEmailMutation,
+  useResendVerificationMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation 
 } from './authApi';
@@ -37,6 +38,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
   const [login, { isLoading: isLoginLoading }] = useLoginMutation();
   const [signup, { isLoading: isSignupLoading }] = useSignupMutation();
   const [verifyEmail, { isLoading: isVerifyLoading }] = useVerifyEmailMutation();
+  const [resendVerification, { isLoading: isResending }] = useResendVerificationMutation();
   const [forgotPassword, { isLoading: isForgotLoading }] = useForgotPasswordMutation();
   const [resetPassword, { isLoading: isResetLoading }] = useResetPasswordMutation();
 
@@ -73,7 +75,24 @@ const LoginSignup = ({ initialIsLogin = true }) => {
         setViewState('verify_email');
       }
     } catch (err) {
+      if (viewState === 'login' && err.status === 403) {
+        setRegisteredEmail(formData.email);
+        setVerificationCode('');
+        setViewState('verify_email');
+        return;
+      }
       triggerToast(getErrorMessage(err, 'Authentication processing fault. Try again.'));
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (isResending) return;
+    try {
+      await resendVerification(registeredEmail).unwrap();
+      setVerificationCode('');
+      triggerToast('A new verification code was requested.', 'success');
+    } catch (err) {
+      triggerToast(getErrorMessage(err, 'Could not request a new code.'));
     }
   };
 
@@ -379,7 +398,7 @@ const LoginSignup = ({ initialIsLogin = true }) => {
                 Verify Your Email
               </h2>
               <p style={{ fontSize: '0.88rem', color: colors.textMuted, textAlign: 'center', marginBottom: '24px', lineHeight: 1.5 }}>
-                We dispatched a secure authentication token blueprint to <strong style={{ color: colors.textPrimary }}>{registeredEmail}</strong>.
+                Enter the code sent to <strong style={{ color: colors.textPrimary }}>{registeredEmail}</strong>.
               </p>
               
               <form onSubmit={handleVerifyCode} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -402,6 +421,9 @@ const LoginSignup = ({ initialIsLogin = true }) => {
                   style={{ background: colors.btnGradient, color: colors.white, border: 'none', padding: '15px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer', letterSpacing: '1.5px', textTransform: 'uppercase', fontFamily: "'Montserrat', sans-serif" }}
                 >
                   {isVerifyLoading ? 'VERIFYING...' : 'Verify Security Token'}
+                </button>
+                <button type="button" disabled={isResending || isVerifyLoading} onClick={handleResendVerification}>
+                  {isResending ? 'Sending…' : 'Request a new code'}
                 </button>
               </form>
             </div>

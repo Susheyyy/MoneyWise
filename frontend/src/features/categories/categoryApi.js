@@ -14,20 +14,15 @@ export const categoryApi = createApi({
       query: (newCat) => ({ url: '/api/categories', method: 'POST', body: newCat }),
       invalidatesTags: ['Category'],
     }),
-    updateCategoryBudget: builder.mutation({
-      query: ({ id, ...payload }) => ({ url: `/api/categories/${id}`, method: 'PATCH', body: payload }),
+    updateCategory: builder.mutation({
+      query: ({ id, ...body }) => ({ url: `/api/categories/${id}`, method: 'PATCH', body }),
       invalidatesTags: ['Category'],
     }),
     deleteCategory: builder.mutation({
-      query: (id) => ({ url: `/api/categories/${id}`, method: 'DELETE' }),
+      query: id => ({ url: `/api/categories/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Category'],
     }),
   }),
 });
 
-export const { 
-  useGetCategoriesQuery, 
-  useAddCategoryMutation, 
-  useUpdateCategoryBudgetMutation, 
-  useDeleteCategoryMutation 
-} = categoryApi;
+export const { useGetCategoriesQuery, useAddCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } = categoryApi;

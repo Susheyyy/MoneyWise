@@ -1,6 +1,25 @@
 const User = require('../models/User');
+const { createHmac, randomInt } = require('node:crypto');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail');
+
+const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+const normalizeEmail = value => typeof value === 'string' ? value.trim().toLowerCase() : '';
+const validCode = value => typeof value === 'string' && /^\d{6}$/.test(value);
+const digest = (purpose, email, code) => createHmac('sha256', process.env.JWT_SECRET)
+  .update(JSON.stringify([purpose, email, code])).digest('hex');
+
+function issueChallenge(purpose, email) {
+  const code = String(randomInt(100000, 1000000));
+  return { code, challenge: { digest: digest(purpose, email, code), expiresAt: new Date(Date.now() + 15 * 60 * 1000) } };
+}
+
+const challengeFilter = (purpose, email, code) => ({
+  email,
+  [`${purpose}.digest`]: digest(purpose, email, code),
+  [`${purpose}.expiresAt`]: { $gt: new Date() },
+});
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -35,30 +54,24 @@ const sendTokenCookie = (user, statusCode, res, message, extraData = {}) => {
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, password } = req.body;
+    const email = normalizeEmail(req.body.email);
+    if (!email) return res.status(400).json({ message: 'Enter an email address.' });
     const userExists = await User.findOne({ email });
 
     if (userExists) {
       return res.status(400).json({ message: 'User record coordinates already match' });
     }
 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
+    if (typeof password !== 'string' || !passwordRegex.test(password)) {
       return res.status(400).json({ 
         message: 'Password must be minimum 8 characters, and should contain at least one letter, one number, and one symbol.' 
       });
     }
 
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const codeExpires = new Date(Date.now() + 15 * 60 * 1000);
-
+    const { code, challenge } = issueChallenge('emailVerification', email);
     const user = await User.create({
-      name,
-      email,
-      password,
-      isVerified: false,
-      verificationCode,
-      verificationCodeExpires: codeExpires
+      name, email, password, isVerified: false, emailVerification: challenge,
     });
 
     try {
@@ -66,7 +79,7 @@ exports.registerUser = async (req, res) => {
         email: user.email,
         name: user.name,
         subject: 'MoneyWise Account Verification Code',
-        code: verificationCode
+        code
       });
 
       res.status(201).json({
@@ -82,34 +95,44 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+exports.resendVerification = async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    if (!email) return res.status(400).json({ message: 'Enter an email address.' });
+    const { code, challenge } = issueChallenge('emailVerification', email);
+    const user = await User.findOneAndUpdate(
+      { email, isVerified: false },
+      { $set: { emailVerification: challenge }, $unset: { verificationCode: 1, verificationCodeExpires: 1 } }
+    );
+    if (user) await sendEmail({ email, name: user.name, subject: 'MoneyWise Account Verification Code', code });
+    res.json({ message: 'If this account is awaiting verification, a new code was sent.' });
+  } catch {
+    res.status(503).json({ message: 'Could not send a verification code. Try again.' });
+  }
+};
+
 exports.verifyEmail = async (req, res) => {
   try {
-    const { email, code } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const { code } = req.body;
+    if (!email || !validCode(code)) return res.status(400).json({ message: 'Enter a valid verification code.' });
 
-    const user = await User.findOne({
-      email,
-      verificationCode: code,
-      verificationCodeExpires: { $gt: Date.now() } 
-    });
-
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid cryptographic verification code signature or session expired.' });
-    }
-
-    user.isVerified = true;
-    user.verificationCode = null;
-    user.verificationCodeExpires = null;
-    await user.save();
-
-    sendTokenCookie(user, 200, res, 'Email channel validation successful.');
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const user = await User.findOneAndUpdate(
+      { ...challengeFilter('emailVerification', email, code), isVerified: false },
+      { $set: { isVerified: true }, $unset: { emailVerification: 1, verificationCode: 1, verificationCodeExpires: 1 } },
+      { new: true }
+    );
+    if (!user) return res.status(400).json({ message: 'Verification code is invalid or expired. Request a new one.' });
+    sendTokenCookie(user, 200, res, 'Email verified.');
+  } catch {
+    res.status(500).json({ message: 'Could not verify your email.' });
   }
 };
 
 exports.loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = normalizeEmail(req.body.email);
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
@@ -137,47 +160,37 @@ exports.logoutUser = async (req, res) => {
 
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'No profile matching those credentials located.' });
-
-    const recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
-    user.verificationCode = recoveryCode;
-    user.verificationCodeExpires = new Date(Date.now() + 15 * 60 * 1000); 
-    await user.save();
-
-    await sendEmail({
-      email: user.email,
-      name: user.name,
-      subject: 'MoneyWise Password Recovery Code',
-      code: recoveryCode
-    });
-
-    res.status(200).json({ success: true, message: 'Recovery code sent.' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const email = normalizeEmail(req.body.email);
+    if (!email) return res.status(400).json({ message: 'Enter an email address.' });
+    const { code, challenge } = issueChallenge('passwordRecovery', email);
+    const user = await User.findOneAndUpdate(
+      { email, isVerified: true },
+      { $set: { passwordRecovery: challenge }, $unset: { verificationCode: 1, verificationCodeExpires: 1 } }
+    );
+    if (user) await sendEmail({ email, name: user.name, subject: 'MoneyWise Password Recovery Code', code });
+    res.json({ success: true, message: 'If an eligible account exists, a recovery code was sent.' });
+  } catch {
+    res.status(503).json({ message: 'Could not send a recovery code. Try again.' });
   }
 };
 
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, code, newPassword } = req.body;
-    const user = await User.findOne({
-      email,
-      verificationCode: code,
-      verificationCodeExpires: { $gt: Date.now() }
-    });
-
-    if (!user) return res.status(400).json({ message: 'Invalid token or recovery window expired.' });
-
-    user.password = newPassword;
-    user.verificationCode = null;
-    user.verificationCodeExpires = null;
-    await user.save();
-
-    res.status(200).json({ success: true, message: 'Security password profile updated successfully.' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const email = normalizeEmail(req.body.email);
+    const { code, newPassword } = req.body;
+    if (!email || !validCode(code) || typeof newPassword !== 'string' || !passwordRegex.test(newPassword)) {
+      return res.status(400).json({ message: 'Enter a valid recovery code and a strong new password.' });
+    }
+    const filter = { ...challengeFilter('passwordRecovery', email, code), isVerified: true };
+    if (!await User.exists(filter)) return res.status(400).json({ message: 'Recovery code is invalid or expired.' });
+    // Query updates bypass the model's save hook.
+    const password = await bcrypt.hash(newPassword, 12);
+    filter['passwordRecovery.expiresAt'] = { $gt: new Date() };
+    const result = await User.updateOne(filter, { $set: { password }, $unset: { passwordRecovery: 1 } });
+    if (!result.modifiedCount) return res.status(400).json({ message: 'Recovery code is invalid or expired.' });
+    res.json({ success: true, message: 'Password updated.' });
+  } catch {
+    res.status(500).json({ message: 'Could not reset your password.' });
   }
 };
 

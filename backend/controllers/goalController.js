@@ -5,6 +5,8 @@ const { toPaise } = require('../utils/money');
 const { walletBalance, postWalletEntry } = require('../utils/walletLedger');
 const financialWrite = require('../utils/financialWrite');
 
+const contributionReceipt = ({ _id, currentSaved }) => ({ _id, currentSaved });
+
 exports.getGoals = async (req, res) => {
   try {
     const archivedAt = req.query.archived === 'true' ? { $ne: null } : null;
@@ -108,7 +110,7 @@ exports.addContribution = async (req, res) => {
       await goal.save({ session });
 
       return goal;
-    });
+    }, { summarize: contributionReceipt });
     res.status(200).json(updated);
   } catch (err) {
     res.status(err.status || 400).json({ message: err.message });

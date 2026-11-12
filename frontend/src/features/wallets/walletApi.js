@@ -15,19 +15,14 @@ export const walletApi = createApi({
       invalidatesTags: ['Wallet'],
     }),
     updateWallet: builder.mutation({
-      query: ({ id, ...payload }) => ({ url: `/api/wallets/${id}`, method: 'PUT', body: payload }),
+      query: ({ id, ...body }) => ({ url: `/api/wallets/${id}`, method: 'PUT', body }),
       invalidatesTags: ['Wallet'],
     }),
     deleteWallet: builder.mutation({
-      query: (id) => ({ url: `/api/wallets/${id}`, method: 'DELETE' }),
+      query: id => ({ url: `/api/wallets/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Wallet'],
     }),
   }),
 });
 
-export const { 
-  useGetWalletsQuery, 
-  useCreateWalletMutation, 
-  useUpdateWalletMutation, 
-  useDeleteWalletMutation 
-} = walletApi;
+export const { useGetWalletsQuery, useCreateWalletMutation, useUpdateWalletMutation, useDeleteWalletMutation } = walletApi;

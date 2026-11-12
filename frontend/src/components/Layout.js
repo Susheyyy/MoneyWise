@@ -162,7 +162,8 @@ const Layout = ({ children }) => {
   }, [sidebarCollapsed]);
 
   return (
-    <div style={{
+    <div className="app-shell" style={{
+      '--sidebar-width': sidebarWidth,
       minHeight: '100vh',
       backgroundColor: colors.background,
       display: 'flex',
@@ -171,8 +172,8 @@ const Layout = ({ children }) => {
       transition: 'background-color 0.2s ease',
     }}>
       {/* ── SIDEBAR ───────────────────────────────────────────── */}
-      <nav style={{
-        width: sidebarWidth,
+      <nav aria-label="Main navigation" style={{
+        width: 'var(--sidebar-width)',
         flexShrink: 0,
         backgroundColor: colors.sidebar,
         display: 'flex',
@@ -190,6 +191,7 @@ const Layout = ({ children }) => {
         <button
           type="button"
           onClick={() => setSidebarCollapsed(prev => !prev)}
+          className="app-sidebar-toggle"
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           style={{
@@ -217,6 +219,9 @@ const Layout = ({ children }) => {
                 key={item.key}
                 type="button"
                 onClick={() => navigate(item.path)}
+                className="app-nav-item"
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
                 title={item.label}
                 style={{
                   position: 'relative',
@@ -250,7 +255,7 @@ const Layout = ({ children }) => {
                   }} />
                 )}
                 <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon(isActive)}</span>
-                {!sidebarCollapsed && <span>{item.label}</span>}
+                {!sidebarCollapsed && <span className="app-nav-label">{item.label}</span>}
               </button>
             );
           })}
@@ -260,7 +265,7 @@ const Layout = ({ children }) => {
       {/* ── MAIN CONTENT AREA ───────────────────────────────── */}
       <div style={{
         flex: 1,
-        marginLeft: sidebarWidth,
+        marginLeft: 'var(--sidebar-width)',
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
@@ -268,7 +273,7 @@ const Layout = ({ children }) => {
         transition: 'all 0.2s ease',
       }}>
         {/* ── TOP NAVBAR ────────────────────────────────────── */}
-        <header style={{
+        <header className="app-topbar" style={{
           display: 'flex',
           alignItems: 'center',
           padding: '0 32px',
@@ -298,8 +303,8 @@ const Layout = ({ children }) => {
             >
               MONEYWISE
             </span>
-            <span style={{ color: colors.textMuted, fontSize: '14px', userSelect: 'none' }}>/</span>
-            <span style={{
+            <span className="app-topbar-secondary" style={{ color: colors.textMuted, fontSize: '14px', userSelect: 'none' }}>/</span>
+            <span className="app-topbar-secondary" style={{
               fontFamily: "'Montserrat', sans-serif",
               fontSize: '13px',
               fontWeight: 600,
@@ -313,7 +318,7 @@ const Layout = ({ children }) => {
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
 
             {/* Period pill */}
-            <div style={{
+            <div className="app-topbar-secondary" style={{
               border: `1px solid ${colors.border}`,
               borderRadius: '20px',
               padding: '5px 14px',

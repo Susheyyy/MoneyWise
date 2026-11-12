@@ -19,6 +19,12 @@ export const authApi = createApi({
     verifyEmail: builder.mutation({
       query: (payload) => ({ url: '/api/auth/verify-email', method: 'POST', body: payload }),
     }),
+    resendVerification: builder.mutation({
+      query: (email) => ({ url: '/api/auth/resend-verification', method: 'POST', body: { email } }),
+    }),
+    changePassword: builder.mutation({
+      query: (body) => ({ url: '/api/user/change-password', method: 'PUT', body }),
+    }),
 forgotPassword: builder.mutation({
   query: (payload) => ({ url: '/api/auth/forgot-password', method: 'POST', body: payload }),
 }),
@@ -38,6 +44,7 @@ forgotPassword: builder.mutation({
 });
 
 export const { useGetSessionQuery, useGetProfileQuery, useLoginMutation, useSignupMutation, useVerifyEmailMutation, useForgotPasswordMutation, useResetPasswordMutation, useUpdateProfileMutation, useLogoutMutation } = authApi;
+export const { useResendVerificationMutation, useChangePasswordMutation } = authApi;
 
 export const useSignOut = () => {
   const dispatch = useDispatch();

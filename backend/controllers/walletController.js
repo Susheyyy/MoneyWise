@@ -44,9 +44,16 @@ exports.updateWallet = async (req, res) => {
 
 exports.deleteWallet = async (req, res) => {
   try {
-    const wallet = await Wallet.findOneAndDelete({ _id: req.params.id, user: req.user.id });
-    if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
-    res.json({ message: 'Wallet scrubbed cleanly' });
+    const owner = { _id: req.params.id, user: req.user.id };
+    const wallet = await Wallet.findOneAndDelete({
+      ...owner,
+      $or: [{ balancePaise: 0 }, { balancePaise: null, balance: 0 }],
+    });
+    if (!wallet) {
+      if (await Wallet.exists(owner)) return res.status(409).json({ message: 'Only wallets with a zero balance can be removed.' });
+      return res.status(404).json({ message: 'Wallet not found.' });
+    }
+    res.json({ message: 'Wallet removed.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

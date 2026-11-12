@@ -1,4 +1,5 @@
 const Category = require('../models/Category');
+const { toPaise } = require('../utils/money');
 exports.getCategories = async (req, res) => {
   try {
     const categories = await Category.find({ user: req.user.id }).sort({ name: 1 }); 
@@ -11,10 +12,10 @@ exports.getCategories = async (req, res) => {
 exports.createCategory = async (req, res) => {
   try {
     const { name, budget, color } = req.body; 
-    const category = await Category.create({ user: req.user.id, name, budget, color }); 
+    const category = await Category.create({ user: req.user.id, name, budget: budget === undefined ? undefined : toPaise(budget) / 100, color });
     res.status(201).json(category); 
   } catch (err) {
-    res.status(400).json({ message: 'Category identifier processing fault or profile conflict.' }); 
+    res.status(err.code === 11000 ? 409 : 400).json({ message: err.code === 11000 ? 'A category with this name already exists.' : 'Enter a valid category name and budget.' });
   }
 };
 
@@ -22,7 +23,7 @@ exports.updateCategoryBudget = async (req, res) => {
   try {
     const { budget, name, color } = req.body;
     const updateData = {};
-    if (budget !== undefined) updateData.budget = Number(budget);
+    if (budget !== undefined) updateData.budget = toPaise(budget) / 100;
     if (name !== undefined) updateData.name = name.trim();
     if (color !== undefined) updateData.color = color;
 
@@ -37,7 +38,7 @@ exports.updateCategoryBudget = async (req, res) => {
     }
     res.status(200).json(category);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.code === 11000 ? 409 : 400).json({ message: err.code === 11000 ? 'A category with this name already exists.' : err.message });
   }
 };
 

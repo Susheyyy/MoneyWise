@@ -1,24 +1,55 @@
+import './ProfileSettings.css';
 import { downloadTransactionExport } from '../../utils/downloadTransactionExport';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useGetCategoriesQuery, useUpdateCategoryBudgetMutation } from '../../features/categories/categoryApi';
-import { useUpdateProfileMutation, useSignOut, useGetProfileQuery } from '../../features/auth/authApi';
+import { useSearchParams } from 'react-router-dom';
+import { useGetCategoriesQuery, useAddCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } from '../../features/categories/categoryApi';
+import { useUpdateProfileMutation, useSignOut, useGetProfileQuery, useChangePasswordMutation } from '../../features/auth/authApi';
+import { useGetWalletsQuery, useCreateWalletMutation, useUpdateWalletMutation, useDeleteWalletMutation } from '../../features/wallets/walletApi';
 import { updateUser } from '../../features/auth/authSlice';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { useTheme } from '../../context/ThemeContext';
 
-const ProfileSettings = ({ onBackToDashboard }) => {
+const settingsSections = [
+  ['Account', [['Profile', 'Profile details'], ['Security', 'Security'], ['Notifications', 'Reminders']]],
+  ['Finance', [['Wallets', 'Wallets'], ['Budgets', 'Budgets'], ['Categories', 'Categories']]],
+  ['Application', [['Appearance', 'Appearance'], ['Export', 'Export data'], ['Settings', 'Session']]],
+];
+
+const ProfileSettings = () => {
   
   const currentUser = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
-  const [updateProfileApi] = useUpdateProfileMutation();
+  const [updateProfileApi, { isLoading: isSaving }] = useUpdateProfileMutation();
   const [signOut, isSigningOut] = useSignOut();
   
-  const { data: dbCategories = [], isLoading: catsLoading } = useGetCategoriesQuery();
-  const [updateCategoryBudget] = useUpdateCategoryBudgetMutation();
+  const { data: dbCategories = [], isLoading: catsLoading, isError: categoriesError, refetch: retryCategories } = useGetCategoriesQuery();
+  const { data: wallets = [], isLoading: walletsLoading, isError: walletsError, refetch: retryWallets } = useGetWalletsQuery();
+  const [createWallet, { isLoading: isCreatingWallet }] = useCreateWalletMutation();
+  const [addCategory, { isLoading: isCreatingCategory }] = useAddCategoryMutation();
+  const [updateWallet, walletUpdate] = useUpdateWalletMutation();
+  const [deleteWallet, walletRemoval] = useDeleteWalletMutation();
+  const [updateCategory, categoryUpdate] = useUpdateCategoryMutation();
+  const [deleteCategory, categoryRemoval] = useDeleteCategoryMutation();
+  const [editingWallet, setEditingWallet] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const walletBusy = isCreatingWallet || walletUpdate.isLoading || walletRemoval.isLoading;
+  const categoryBusy = isCreatingCategory || categoryUpdate.isLoading || categoryRemoval.isLoading;
+  const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
+  const [walletName, setWalletName] = useState('');
+  const [walletType, setWalletType] = useState('Cash');
+  const [openingBalance, setOpeningBalance] = useState('0');
+  const [categoryName, setCategoryName] = useState('');
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const profileLoaded = useRef(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const { theme, setTheme, fontSize, setFontSize, colors } = useTheme();
 
-  const [activeMenu, setActiveMenu] = useState('Profile');
+  const requestedTab = searchParams.get('tab');
+  const activeMenu = settingsSections.some(([, links]) => links.some(([tab]) => tab === requestedTab)) ? requestedTab : 'Profile';
+  const setActiveMenu = tab => setSearchParams(tab === 'Profile' ? {} : { tab });
 
   const [savedData, setSavedData] = useState({
     firstName: currentUser?.name?.split(' ')[0] || '',
@@ -28,11 +59,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     institution: '',
     city: '',
     bio: '',
-    budgetAlerts: true,
-    subRenewals: true,
-    groupUpdates: true,
-    weeklyDigest: false,
-    goalMilestones: true,
     monthlyLogPreference: currentUser?.monthlyLogPreference || 'start',
     monthlyLogCustomDate: currentUser?.monthlyLogCustomDate || 1,
   });
@@ -48,7 +74,8 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   // Load the real profile from the server instead of showing placeholder values.
   const { data: profile } = useGetProfileQuery();
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || profileLoaded.current) return;
+    profileLoaded.current = true;
     const parts = (profile.name || '').split(' ');
     const first = parts[0] || '';
     const last = parts.slice(1).join(' ');
@@ -71,11 +98,6 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     setSavedData(prev => ({ ...prev, ...values }));
   }, [profile]);
 
-  const [budgetAlerts, setBudgetAlerts] = useState(savedData.budgetAlerts);
-  const [subRenewals, setSubRenewals] = useState(savedData.subRenewals);
-  const [groupUpdates, setGroupUpdates] = useState(savedData.groupUpdates);
-  const [weeklyDigest, setWeeklyDigest] = useState(savedData.weeklyDigest);
-  const [goalMilestones, setGoalMilestones] = useState(savedData.goalMilestones);
   
   
   const [monthlyLogPreference, setMonthlyLogPreference] = useState(savedData.monthlyLogPreference);
@@ -83,46 +105,21 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
   const [liveBudgets, setLiveBudgets] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    if (dbCategories.length > 0) {
-      const budgetMap = {};
-      dbCategories.forEach(cat => {
-        budgetMap[cat._id] = cat.budget.toString();
-      });
-      setLiveBudgets(budgetMap);
-    }
-  }, [dbCategories]);
-
-  useEffect(() => {
-    let budgetModified = false;
-    dbCategories.forEach(cat => {
-      const currentInputValue = liveBudgets[cat._id] || '0';
-      if (currentInputValue !== cat.budget.toString()) {
-        budgetModified = true;
-      }
-    });
-
-    const isChanged = 
-      firstName !== savedData.firstName ||
-      lastName !== savedData.lastName ||
-      email !== savedData.email ||
-      phone !== savedData.phone ||
-      institution !== savedData.institution ||
-      city !== savedData.city ||
-      bio !== savedData.bio ||
-      budgetAlerts !== savedData.budgetAlerts ||
-      subRenewals !== savedData.subRenewals ||
-      groupUpdates !== savedData.groupUpdates ||
-      weeklyDigest !== savedData.weeklyDigest ||
-      goalMilestones !== savedData.goalMilestones ||
-      monthlyLogPreference !== savedData.monthlyLogPreference ||
-      monthlyLogCustomDate !== savedData.monthlyLogCustomDate ||
-      budgetModified;
-    
-    setHasChanges(isChanged);
-  }, [firstName, lastName, email, phone, institution, city, bio, budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones, liveBudgets, monthlyLogPreference, monthlyLogCustomDate, savedData, dbCategories]);
+  const changedBudgets = Object.entries(liveBudgets).filter(([id, value]) => {
+    const saved = dbCategories.find(category => category._id === id);
+    return !saved || Number(value) !== saved.budget;
+  });
+  const hasChanges =
+    firstName !== savedData.firstName ||
+    lastName !== savedData.lastName ||
+    phone !== savedData.phone ||
+    institution !== savedData.institution ||
+    city !== savedData.city ||
+    bio !== savedData.bio ||
+    monthlyLogPreference !== savedData.monthlyLogPreference ||
+    monthlyLogCustomDate !== savedData.monthlyLogCustomDate ||
+    changedBudgets.length > 0;
 
   const uiColors = {
     ...colors,
@@ -144,39 +141,92 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
   const handleSaveChanges = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
     try {
-      const updatePromises = dbCategories.map(cat => {
-        const inputVal = liveBudgets[cat._id] || '0';
-        if (inputVal !== cat.budget.toString()) {
-          return updateCategoryBudget({ id: cat._id, budget: Number(inputVal) }).unwrap();
-        }
-        return Promise.resolve();
-      });
-
-      await Promise.all(updatePromises);
-
       const updatedMaster = {
         firstName, lastName, email, phone, institution, city, bio,
-        budgetAlerts, subRenewals, groupUpdates, weeklyDigest, goalMilestones,
         monthlyLogPreference, monthlyLogCustomDate
       };
-
       const profileData = await updateProfileApi({
         name: `${firstName} ${lastName}`.trim(),
-        phone,
-        institution,
-        city,
-        bio,
-        monthlyLogPreference,
-        monthlyLogCustomDate,
+        phone, institution, city, bio, monthlyLogPreference, monthlyLogCustomDate,
+        budgets: changedBudgets.map(([id, value]) => ({ id, budget: Number(value) })),
       }).unwrap();
       dispatch(updateUser(profileData));
-
       setSavedData(updatedMaster);
-      setHasChanges(false);
-      showNotification('Changes saved successfully.', 'success');
+      setLiveBudgets({});
+      showNotification('Changes saved.');
     } catch (err) {
-      showNotification(getErrorMessage(err, 'Failed to sync budget updates.'), 'error');
+      showNotification(getErrorMessage(err, 'Could not save changes.'), 'error');
+    }
+  };
+
+  const handleCreateWallet = async event => {
+    event.preventDefault();
+    if (walletBusy || !walletName.trim()) return;
+    try {
+      const wallet = { name: walletName.trim(), type: walletType };
+      if (editingWallet) await updateWallet({ id: editingWallet, ...wallet }).unwrap();
+      else await createWallet({ ...wallet, balance: Number(openingBalance) }).unwrap();
+      setEditingWallet(null);
+      setWalletName('');
+      setOpeningBalance('0');
+      showNotification(editingWallet ? 'Wallet updated.' : 'Wallet created.');
+    } catch (err) {
+      showNotification(getErrorMessage(err, 'Could not save wallet.'), 'error');
+    }
+  };
+
+  const handleAddCategory = async event => {
+    event.preventDefault();
+    if (categoryBusy || !categoryName.trim()) return;
+    try {
+      const category = { name: categoryName.trim() };
+      if (editingCategory) await updateCategory({ id: editingCategory, ...category }).unwrap();
+      else await addCategory(category).unwrap();
+      setEditingCategory(null);
+      setCategoryName('');
+      showNotification(editingCategory ? 'Category updated.' : 'Category created.');
+    } catch (err) {
+      showNotification(getErrorMessage(err, 'Could not save category.'), 'error');
+    }
+  };
+
+  const handleRemoveWallet = async wallet => {
+    if (walletBusy || !window.confirm(`Remove "${wallet.name}"? Past transactions will remain in your ledger.`)) return;
+    try {
+      await deleteWallet(wallet._id).unwrap();
+      if (editingWallet === wallet._id) { setEditingWallet(null); setWalletName(''); setOpeningBalance('0'); }
+      showNotification('Wallet removed.');
+    } catch (err) {
+      showNotification(getErrorMessage(err, 'Could not remove wallet.'), 'error');
+    }
+  };
+
+  const handleRemoveCategory = async category => {
+    if (categoryBusy || isSaving || !window.confirm(`Remove "${category.name}"? Past transactions will remain in your ledger.`)) return;
+    try {
+      await deleteCategory(category._id).unwrap();
+      setLiveBudgets(current => Object.fromEntries(Object.entries(current).filter(([id]) => id !== category._id)));
+      if (editingCategory === category._id) { setEditingCategory(null); setCategoryName(''); }
+      showNotification('Category removed.');
+    } catch (err) {
+      showNotification(getErrorMessage(err, 'Could not remove category.'), 'error');
+    }
+  };
+
+  const handleChangePassword = async event => {
+    event.preventDefault();
+    if (isChangingPassword) return;
+    if (newPassword !== confirmPassword) return showNotification('New passwords do not match.', 'error');
+    try {
+      await changePassword({ oldPassword, newPassword }).unwrap();
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      showNotification('Password updated.');
+    } catch (err) {
+      showNotification(getErrorMessage(err, 'Could not update password.'), 'error');
     }
   };
 
@@ -188,20 +238,10 @@ const ProfileSettings = ({ onBackToDashboard }) => {
     setInstitution(savedData.institution);
     setCity(savedData.city);
     setBio(savedData.bio);
-    setBudgetAlerts(savedData.budgetAlerts);
-    setSubRenewals(savedData.subRenewals);
-    setGroupUpdates(savedData.groupUpdates);
-    setWeeklyDigest(savedData.weeklyDigest);
-    setGoalMilestones(savedData.goalMilestones);
     setMonthlyLogPreference(savedData.monthlyLogPreference);
     setMonthlyLogCustomDate(savedData.monthlyLogCustomDate);
     
-    const budgetMap = {};
-    dbCategories.forEach(cat => {
-      budgetMap[cat._id] = cat.budget.toString();
-    });
-    setLiveBudgets(budgetMap);
-    setHasChanges(false);
+    setLiveBudgets({});
     showNotification('Form modifications discarded.', 'success');
   };
 
@@ -223,10 +263,15 @@ const ProfileSettings = ({ onBackToDashboard }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: uiColors.bgMain, color: uiColors.tealDark, fontFamily: "'Montserrat', sans-serif" }}>
+    <div className="profile-settings" style={{
+      '--settings-surface': uiColors.white, '--settings-border': uiColors.border,
+      '--settings-bg': uiColors.bgMain, '--settings-text': uiColors.tealDark,
+      '--settings-muted': uiColors.textMuted, '--settings-accent': uiColors.tealPrimary,
+      '--settings-selected': uiColors.successBg, '--settings-danger': uiColors.redText,
+      display: 'flex', flexDirection: 'column', background: uiColors.bgMain, color: uiColors.tealDark, fontFamily: "'Montserrat', sans-serif" }}>
       
       {toast.show && (
-        <div style={{ position: 'fixed', top: '24px', right: '24px', background: toast.type === 'success' ? '#E1F5EE' : uiColors.redBg, borderLeft: `4px solid ${toast.type === 'success' ? '#0F6E56' : uiColors.redText}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(30,51,54,0.12)', zIndex: 10000, color: toast.type === 'success' ? '#085041' : uiColors.redText, fontWeight: 600, fontSize: '0.85rem' }}>
+        <div role={toast.type === 'error' ? 'alert' : 'status'} style={{ position: 'fixed', top: '24px', right: '24px', background: toast.type === 'success' ? '#E1F5EE' : uiColors.redBg, borderLeft: `4px solid ${toast.type === 'success' ? '#0F6E56' : uiColors.redText}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(30,51,54,0.12)', zIndex: 10000, color: toast.type === 'success' ? '#085041' : uiColors.redText, fontWeight: 600, fontSize: '0.85rem' }}>
           <span>{toast.message}</span>
         </div>
       )}
@@ -249,37 +294,23 @@ const ProfileSettings = ({ onBackToDashboard }) => {
         transition: 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s ease, visibility 0.3s'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={handleDiscardChanges} style={{ background: 'transparent', color: uiColors.tealPrimary, border: `1px solid ${uiColors.border}`, padding: '8px 20px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'background-color 0.2s' }}>Discard</button>
-          <button onClick={handleSaveChanges} style={{ background: uiColors.accentGreen, color: '#fff', border: 'none', padding: '8px 22px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background-color 0.2s' }}>Save changes</button>
+          <button disabled={isSaving} onClick={handleDiscardChanges} style={{ background: 'transparent', color: uiColors.tealPrimary, border: `1px solid ${uiColors.border}`, padding: '8px 20px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'background-color 0.2s' }}>Discard</button>
+          <button disabled={isSaving} onClick={handleSaveChanges} style={{ background: uiColors.accentGreen, color: '#fff', border: 'none', padding: '8px 22px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background-color 0.2s' }}>Save changes</button>
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr)', background: uiColors.bgMain }}>
-
-        <aside style={{ background: uiColors.white, borderRight: `1px solid ${uiColors.border}`, padding: '8px 0 24px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '16px 24px 8px 24px' }}>Account</div>
-          <div onClick={() => setActiveMenu('Profile')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Profile' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Profile' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Profile' ? uiColors.successBg : 'transparent' }}>Profile Details</div>
-          <div onClick={() => setActiveMenu('Plan')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Plan' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Plan' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Plan' ? uiColors.successBg : 'transparent' }}>Plan</div>
-          <div onClick={() => setActiveMenu('Security')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Security' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Security' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Security' ? uiColors.successBg : 'transparent' }}>Security</div>
-          <div onClick={() => setActiveMenu('Notifications')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Notifications' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Notifications' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Notifications' ? uiColors.successBg : 'transparent' }}>Notifications</div>
-          
-          <div style={{ height: '1px', background: uiColors.border, margin: '12px 24px' }}></div>
-          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '4px 24px 8px 24px' }}>Finance</div>
-          <div onClick={() => setActiveMenu('Wallets')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Wallets' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Wallets' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Wallets' ? uiColors.successBg : 'transparent' }}>Wallets</div>
-          <div onClick={() => setActiveMenu('Budgets')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Budgets' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Budgets' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Budgets' ? uiColors.successBg : 'transparent' }}>Budgets</div>
-          <div onClick={() => setActiveMenu('Categories')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Categories' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Categories' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Categories' ? uiColors.successBg : 'transparent' }}>Categories</div>
-          
-          <div style={{ height: '1px', background: uiColors.border, margin: '12px 24px' }}></div>
-          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '4px 24px 8px 24px' }}>Application</div>
-          <div onClick={() => setActiveMenu('Appearance')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Appearance' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Appearance' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Appearance' ? uiColors.successBg : 'transparent' }}>Appearance</div>
-          <div onClick={() => setActiveMenu('Export')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Export' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Export' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Export' ? uiColors.successBg : 'transparent' }}>Export Data</div>
-          
-          <div style={{ height: '1px', background: uiColors.border, margin: '12px 24px' }}></div>
-          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#B4B2A9', padding: '4px 24px 8px 24px' }}>Settings</div>
-          <div onClick={() => setActiveMenu('Settings')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', fontSize: '13px', fontWeight: 500, color: activeMenu === 'Settings' ? uiColors.successText : uiColors.textMuted, cursor: 'pointer', borderLeft: `3px solid ${activeMenu === 'Settings' ? uiColors.accentGreen : 'transparent'}`, background: activeMenu === 'Settings' ? uiColors.successBg : 'transparent' }}>Settings</div>
-        </aside>
-        <main style={{ padding: '32px 48px', display: 'flex', flexDirection: 'column', gap: '32px', overflowY: 'auto' }}>
-          
+      <div className="settings-layout">
+        <nav className="settings-nav" aria-label="Settings">
+          {settingsSections.map(([label, links]) => (
+            <div key={label} className="settings-nav-group">
+              <span>{label}</span>
+              {links.map(([tab, name]) => (
+                <button key={tab} type="button" aria-current={activeMenu === tab ? 'page' : undefined} onClick={() => setActiveMenu(tab)}>{name}</button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="settings-content">
           {activeMenu === 'Profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <div>
@@ -295,7 +326,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div className="settings-profile-grid">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: uiColors.textMuted }}>First Name</span>
                     <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '12px 14px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '13px', color: uiColors.tealDark, outline: 'none', background: uiColors.bgLight, fontFamily: 'inherit' }} />
@@ -331,7 +362,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
               <section style={{ border: `1.5px solid ${uiColors.border}`, borderRadius: '14px', overflow: 'hidden', background: uiColors.white, marginTop: '16px' }}>
                 <div style={{ padding: '20px 24px', borderBottom: `1px solid ${uiColors.border}`, background: uiColors.white }}>
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#791F1F', fontFamily: "'Montserrat', sans-serif" }}>Danger zone</h4>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#791F1F', fontFamily: "'Montserrat', sans-serif" }}>Transaction data</h4>
                 </div>
                 <div style={{ padding: '8px 24px' }}>
                   
@@ -343,73 +374,26 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                     <button type="button" onClick={() => setActiveMenu('Export')} style={{ padding: '8px 18px', background: uiColors.bgLight, border: '1px solid #E0E8E8', borderRadius: '10px', color: '#6B8B8E', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Export</button>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0', borderBottom: '1px solid #F8ECEC' }}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Clear all transactions</div>
-                      <div style={{ fontSize: '12px', color: '#9BB5B8', marginTop: '4px' }}>Permanently removes all transaction history</div>
-                    </div>
-                    <button type="button" onClick={() => showNotification('Ledger collections cleared.', 'error')} style={{ padding: '8px 18px', background: '#FCEBEB', border: '1px solid #F5BFBF', borderRadius: '10px', color: '#A32D2D', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Clear data</button>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0' }}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: uiColors.tealDark }}>Delete account</div>
-                      <div style={{ fontSize: '12px', color: '#9BB5B8', marginTop: '4px' }}>This action is permanent and cannot be undone</div>
-                    </div>
-                    <button type="button" onClick={() => showNotification('Account deletion process initiated.', 'error')} style={{ padding: '8px 18px', background: '#FCEBEB', border: '1px solid #F5BFBF', borderRadius: '10px', color: '#A32D2D', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Delete account</button>
-                  </div>
-
                 </div>
               </section>
             </div>
           )}
 
-          {activeMenu === 'Plan' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px' }}>Account Plan Tier</h3>
-              <div style={{ border: `1px solid ${uiColors.border}`, padding: '24px', borderRadius: '12px', background: uiColors.bgLight, maxWidth: '400px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <span style={{ fontSize: '15px', fontWeight: 600, color: uiColors.tealDark }}>Student Premium Tier</span>
-                  <span style={{ fontSize: '10px', fontWeight: 700, padding: '4px 10px', background: '#E1F5EE', color: '#085041', borderRadius: '6px' }}>ACTIVE</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: uiColors.tealPrimary }}>
-                  <div>· Unlimited master transaction cataloging tracking paths</div>
-                  <div>· High-fidelity metrics syncing filters dashboard analytics</div>
-                  <div>· Multi-group loop vector container split architectures</div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {activeMenu === 'Security' && (
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Security & Authorization Matrix</h3>
-              <p style={{ color: uiColors.textMuted, fontSize: '12px', lineHeight: 1.5 }}>Multi-factor access credentials management configuration setups map out here.</p>
-            </div>
+            <form className="settings-panel settings-form" onSubmit={handleChangePassword}>
+              <h3>Change password</h3>
+              <label>Current password <input type="password" autoComplete="current-password" value={oldPassword} onChange={event => setOldPassword(event.target.value)} required /></label>
+              <label>New password <input type="password" autoComplete="new-password" value={newPassword} onChange={event => setNewPassword(event.target.value)} minLength={8} required /></label>
+              <label>Confirm new password <input type="password" autoComplete="new-password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} minLength={8} required /></label>
+              <small>Use at least eight characters with a letter, number, and symbol.</small>
+              <button className="settings-primary" type="submit" disabled={isChangingPassword}>{isChangingPassword ? 'Updating…' : 'Change password'}</button>
+            </form>
           )}
 
           {activeMenu === 'Notifications' && (
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '20px' }}>Notifications & Alerts</h3>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {[
-                  { label: 'Budget threshold warnings', sub: 'Notify at 50%, 80%, and 100% of limits', state: budgetAlerts, setter: setBudgetAlerts },
-                  { label: 'Subscription renewals pipeline', sub: 'Remind 2 days before cycle charge hits', state: subRenewals, setter: setSubRenewals },
-                  { label: 'Group shared roommate vectors', sub: 'When someone logs split additions or completes ledger settlements', state: groupUpdates, setter: setGroupUpdates },
-                  { label: 'Weekly macro data updates', sub: 'Summary diagnostics parsed every Sunday morning', state: weeklyDigest, setter: setWeeklyDigest },
-                  { label: 'Goal benchmark indicators', sub: 'Notify at 25%, 50%, 75%, and 100% completions', state: goalMilestones, setter: setGoalMilestones }
-                ].map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: `1px solid ${uiColors.border}` }}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 500, color: uiColors.tealDark }}>{item.label}</div>
-                      <div style={{ fontSize: '11px', color: uiColors.textMuted, marginTop: '2px' }}>{item.sub}</div>
-                    </div>
-                    <div onClick={() => item.setter(!item.state)} style={{ width: '38px', height: '22px', borderRadius: '11px', background: item.state ? uiColors.accentGreen : '#D3D1C7', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
-                      <div style={{ position: 'absolute', top: '3px', left: item.state ? '19px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-                    </div>
-                  </div>
-                ))}
-
                 <div style={{ padding: '16px 0', borderBottom: `1px solid ${uiColors.border}` }}>
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 500, color: uiColors.tealDark }}>Monthly Log Frequency</div>
@@ -445,16 +429,35 @@ const ProfileSettings = ({ onBackToDashboard }) => {
           )}
 
           {activeMenu === 'Wallets' && (
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '24px' }}>Payment Gateways Matrix</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {['Primary Bank Account', 'GPay UPI Wallet', 'Cash Ledger'].map(w => (
-                  <div key={w} style={{ padding: '16px 20px', border: `1px solid ${uiColors.border}`, borderRadius: '10px', fontSize: '13px', color: uiColors.tealDark, fontWeight: 500, background: uiColors.white, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                    {w}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <section className="settings-panel">
+              <h3>Wallets</h3>
+              {walletsLoading ? <p role="status">Loading wallets…</p> : walletsError ? (
+                <p role="alert">Could not load wallets. <button type="button" onClick={retryWallets}>Try again</button></p>
+              ) : wallets.length > 0 ? (
+                <ul className="settings-list">{wallets.map(wallet => (
+                  <li key={wallet._id}>
+                    <div><strong>{wallet.name}</strong><small>{wallet.type} · ₹{Number(wallet.balance ?? 0).toLocaleString('en-IN')}</small></div>
+                    <div className="settings-actions">
+                      <button type="button" disabled={walletBusy} onClick={() => { setEditingWallet(wallet._id); setWalletName(wallet.name); setWalletType(wallet.type); }}>Edit</button>
+                      <button type="button" className="settings-danger" disabled={walletBusy || wallet.balance !== 0} onClick={() => handleRemoveWallet(wallet)}>Remove</button>
+                    </div>
+                  </li>
+                ))}</ul>
+              ) : <p>Create a wallet to record transactions or fund savings goals.</p>}
+              {wallets.some(wallet => wallet.balance !== 0) && <small>Only wallets with a zero balance can be removed.</small>}
+              <form className="settings-form" onSubmit={handleCreateWallet}>
+                <h4>{editingWallet ? 'Edit wallet' : 'Create a wallet'}</h4>
+                <label>Wallet name <input value={walletName} onChange={event => setWalletName(event.target.value)} required /></label>
+                <label>Type <select value={walletType} onChange={event => setWalletType(event.target.value)}>
+                  {['Cash', 'Bank', 'UPI', 'Card', 'Other'].map(type => <option key={type}>{type}</option>)}
+                </select></label>
+                {!editingWallet && <label>Opening balance (₹) <input type="number" step="0.01" value={openingBalance} onChange={event => setOpeningBalance(event.target.value)} required /></label>}
+                <div className="settings-actions">
+                  <button className="settings-primary" type="submit" disabled={walletBusy}>{editingWallet ? 'Save wallet' : 'Create wallet'}</button>
+                  {editingWallet && <button type="button" disabled={walletBusy} onClick={() => { setEditingWallet(null); setWalletName(''); }}>Cancel</button>}
+                </div>
+              </form>
+            </section>
           )}
 
           {activeMenu === 'Budgets' && (
@@ -475,9 +478,12 @@ const ProfileSettings = ({ onBackToDashboard }) => {
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <span style={{ position: 'absolute', left: '12px', fontSize: '12px', fontFamily: "'Oswald', sans-serif", fontWeight: 600, color: uiColors.tealDark }}>₹</span>
                         <input 
-                          type="text" 
-                          value={liveBudgets[cat._id] || ''} 
-                          onChange={(e) => setLiveBudgets({ ...liveBudgets, [cat._id]: e.target.value.replace(/[^0-9]/g, '') })} 
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={liveBudgets[cat._id] ?? String(cat.budget)}
+                          disabled={isSaving}
+                          onChange={(e) => setLiveBudgets({ ...liveBudgets, [cat._id]: e.target.value })}
                           style={{ width: '110px', padding: '6px 12px 6px 22px', border: `1px solid ${uiColors.border}`, borderRadius: '6px', fontSize: '12px', fontFamily: "'Oswald', sans-serif", fontWeight: 600, color: uiColors.tealDark, outline: 'none', textAlign: 'right', background: uiColors.bgLight, boxSizing: 'border-box' }} 
                         />
                       </div>
@@ -489,10 +495,30 @@ const ProfileSettings = ({ onBackToDashboard }) => {
           )}
 
           {activeMenu === 'Categories' && (
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: uiColors.tealDark, textTransform: 'uppercase', borderLeft: '3px solid #648B91', paddingLeft: '12px', marginBottom: '16px' }}>Category Allocations Map</h3>
-              <p style={{ color: uiColors.textMuted, fontSize: '12px' }}>Manage structural sorting parameters for ledger transactions entries inside this viewport grid.</p>
-            </div>
+            <section className="settings-panel">
+              <h3>Categories</h3>
+              {catsLoading ? <p role="status">Loading categories…</p> : categoriesError ? (
+                <p role="alert">Could not load categories. <button type="button" onClick={retryCategories}>Try again</button></p>
+              ) : dbCategories.length > 0 ? (
+                <ul className="settings-list">{dbCategories.map(category => (
+                  <li key={category._id}>
+                    <strong>{category.name}</strong>
+                    <div className="settings-actions">
+                      <button type="button" disabled={categoryBusy} onClick={() => { setEditingCategory(category._id); setCategoryName(category.name); }}>Edit</button>
+                      <button type="button" className="settings-danger" disabled={categoryBusy || isSaving} onClick={() => handleRemoveCategory(category)}>Remove</button>
+                    </div>
+                  </li>
+                ))}</ul>
+              ) : <p>Create a category to classify your first transaction.</p>}
+              <form className="settings-form" onSubmit={handleAddCategory}>
+                <h4>{editingCategory ? 'Edit category' : 'Create a category'}</h4>
+                <label>Category name <input value={categoryName} onChange={event => setCategoryName(event.target.value)} required /></label>
+                <div className="settings-actions">
+                  <button className="settings-primary" type="submit" disabled={categoryBusy}>{editingCategory ? 'Save category' : 'Create category'}</button>
+                  {editingCategory && <button type="button" disabled={categoryBusy} onClick={() => { setEditingCategory(null); setCategoryName(''); }}>Cancel</button>}
+                </div>
+              </form>
+            </section>
           )}
 
           {activeMenu === 'Appearance' && (
@@ -506,7 +532,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
               <div>
                 <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', color: uiColors.tealPrimary, textTransform: 'uppercase', marginBottom: '10px' }}>THEME</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <div className="settings-options-grid">
                   {[
                     { id: 'Light', label: 'Light', borderCol: '#1D9E75', innerBg: '#F4F7F7' },
                     { id: 'Dark', label: 'Dark', borderCol: '#1E3336', innerBg: '#111F21' },
@@ -539,7 +565,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
 
               <div>
                 <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1px', color: uiColors.tealPrimary, textTransform: 'uppercase', marginBottom: '10px' }}>FONT SIZE</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <div className="settings-options-grid">
                   {['Small', 'Default', 'Large'].map(size => {
                     const isFontSelected = fontSize === size;
                     return (
@@ -605,7 +631,7 @@ const ProfileSettings = ({ onBackToDashboard }) => {
             </div>
           )}
 
-        </main>
+        </div>
 
 
       </div>

@@ -1,3 +1,4 @@
+import { localDateInput } from '../../utils/calendarDate';
 import { useRetryKey } from '../../utils/useRetryKey';
 import React, { useState } from 'react';
 import { useGetWalletsQuery } from '../../features/wallets/walletApi'; 
@@ -13,7 +14,7 @@ import { useTheme } from '../../context/ThemeContext';
 const SavingsGoals = () => {
   const { theme, colors } = useTheme();
   
-  const { data: dbGoals = [], isLoading: goalsLoading } = useGetGoalsQuery();
+  const { data: dbGoals = [], isLoading: goalsLoading, isError: goalsError, refetch: retryGoals } = useGetGoalsQuery();
   const { data: dbWallets = [] } = useGetWalletsQuery();
   const [createGoal] = useCreateGoalMutation();
   const [addContribution, { isLoading: isContributing }] = useAddContributionMutation();
@@ -28,7 +29,9 @@ const SavingsGoals = () => {
   const [isAddFundsModalOpen, setIsAddFundsModalOpen] = useState(false);
   
   
-  const [selectedGoal, setSelectedGoal] = useState(null);
+  const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const selectedGoal = dbGoals.find(goal => goal._id === selectedGoalId) ||
+    archivedGoals.find(goal => goal._id === selectedGoalId);
   const [archiveGoal, setArchiveGoal] = useState(null);
   const [refundWalletId, setRefundWalletId] = useState('');
 
@@ -36,7 +39,7 @@ const SavingsGoals = () => {
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [monthlySavings, setMonthlySavings] = useState('');
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(() => localDateInput());
   const [targetDate, setTargetDate] = useState('');
   const [category, setCategory] = useState('Tech & gadgets');
   const [notes, setNotes] = useState('');
@@ -123,7 +126,7 @@ const handleCreateGoal = async (e) => {
         walletName: targetWallet?.name || 'Manual',
         note: contributionNote
       };
-      const res = await addContribution({ ...contribution, idempotencyKey: contributionKey(contribution) }).unwrap();
+      await addContribution({ ...contribution, idempotencyKey: contributionKey(contribution) }).unwrap();
       clearContributionKey();
 
       triggerToast(`Deposited ₹${Number(contributionAmount).toLocaleString('en-IN')} via ${targetWallet?.name}!`);
@@ -131,7 +134,6 @@ const handleCreateGoal = async (e) => {
       setContributionAmount(''); setContributionNote('');
       
       
-      setSelectedGoal(res);
     } catch (err) {
       triggerToast(getErrorMessage(err, 'Transaction allocation refused by balance constraints.'));
     }
@@ -144,12 +146,15 @@ const handleCreateGoal = async (e) => {
       await deleteGoal({ goalId: archiveGoal._id, refundWalletId }).unwrap();
       triggerToast(archiveGoal.currentSaved > 0 ? 'Goal archived and savings moved to your wallet.' : 'Goal archived.');
       setArchiveGoal(null);
-      setSelectedGoal(null);
+      setSelectedGoalId(null);
     } catch (err) {
       triggerToast(getErrorMessage(err, 'Could not archive the goal.'));
     }
   };
 
+  if (goalsError) {
+    return <div role="alert" style={{ padding: '40px' }}>Could not load savings goals. <button type="button" onClick={retryGoals}>Try again</button></div>;
+  }
   if (goalsLoading) {
     return <div style={{ padding: '40px', color: uiColors.tealPrimary, fontWeight: 600 }}>Syncing active goals collections matrix...</div>;
   }
@@ -238,7 +243,7 @@ const handleCreateGoal = async (e) => {
             {filteredGoals.map((g) => {
               const currentPct = Math.round((g.currentSaved / g.targetAmount) * 100) || 0;
               return (
-                <div key={g._id} onClick={() => setSelectedGoal(g)} style={{ border: `1px solid ${uiColors.border}`, borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'all 0.2s' }} className="goal-card-hover">
+                <div key={g._id} onClick={() => setSelectedGoalId(g._id)} style={{ border: `1px solid ${uiColors.border}`, borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'all 0.2s' }} className="goal-card-hover">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <div style={{ fontSize: '14px', fontWeight: 600, color: uiColors.textDark }}>{g.name}</div>
@@ -262,7 +267,7 @@ const handleCreateGoal = async (e) => {
           {/* VIEW LEVEL B: DYNAMIC BREAKDOWN FOR SELECTING TARGET ELEMENT */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button onClick={() => setSelectedGoal(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: uiColors.tealPrimary, outline: 'none' }}>←</button>
+              <button onClick={() => setSelectedGoalId(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: uiColors.tealPrimary, outline: 'none' }}>←</button>
               <div>
                 <span style={{ fontSize: '11px', fontWeight: 700, color: uiColors.textMuted, textTransform: 'uppercase' }}>Objective Focus Matrix</span>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: uiColors.tealDark }}>{selectedGoal.name}</h3>

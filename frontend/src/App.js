@@ -27,15 +27,22 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const Dashboard = () => {
-  const { currentData: summary, isLoading: summaryLoading } = useGetSummaryQuery();
-  const { currentData: categories = [], isLoading: categoriesLoading } = useGetCategoriesQuery();
-  const { currentData: expenses = [], isLoading: transactionsLoading } = useGetTransactionsQuery({ limit: 4 });
+  const summary = useGetSummaryQuery();
+  const categories = useGetCategoriesQuery();
+  const transactions = useGetTransactionsQuery({ limit: 4 });
+  const queries = [summary, categories, transactions];
 
   return (
     <Layout>
-      {summaryLoading || categoriesLoading || transactionsLoading
-        ? <p style={{ padding: '32px' }}>Loading dashboard…</p>
-        : <AnalyticsDashboard summary={summary} expenses={expenses} categories={categories} />}
+      {queries.some(query => query.isError) ? (
+        <div role="alert" style={{ padding: '32px' }}>
+          Could not load the dashboard. <button type="button" onClick={() => queries.filter(query => query.isError).forEach(query => query.refetch())}>Try again</button>
+        </div>
+      ) : queries.some(query => query.isLoading) ? (
+        <p role="status" style={{ padding: '32px' }}>Loading dashboard…</p>
+      ) : (
+        <AnalyticsDashboard summary={summary.currentData} expenses={transactions.currentData ?? []} categories={categories.currentData ?? []} />
+      )}
     </Layout>
   );
 };

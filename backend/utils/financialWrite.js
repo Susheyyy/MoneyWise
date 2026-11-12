@@ -2,7 +2,7 @@ const { createHash } = require('node:crypto');
 const mongoose = require('mongoose');
 const Operation = require('../models/Operation');
 
-async function financialWrite(req, scope, write) {
+async function financialWrite(req, scope, write, { summarize } = {}) {
   const key = req.get('Idempotency-Key');
   if (!key) return mongoose.connection.transaction(write);
   if (!/^[\w-]{1,128}$/.test(key)) throw new Error('Invalid idempotency key.');
@@ -15,15 +15,16 @@ async function financialWrite(req, scope, write) {
     if (record.fingerprint !== fingerprint) {
       throw Object.assign(new Error('This idempotency key was already used for different data.'), { status: 409 });
     }
-    return record.result;
+    return summarize ? summarize(record.result) : record.result;
   };
   try {
     return await mongoose.connection.transaction(async session => {
       const existing = await Operation.findById(id).session(session).lean();
       if (existing) return replay(existing);
       const result = await write(session);
-      const snapshot = result.toObject();
-      await Operation.create([{ _id: id, fingerprint, result: snapshot }], { session });
+      const snapshot = summarize ? summarize(result) : result.toObject();
+      const expiresAt = summarize ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : undefined;
+      await Operation.create([{ _id: id, fingerprint, result: snapshot, expiresAt }], { session });
       return snapshot;
     });
   } catch (err) {

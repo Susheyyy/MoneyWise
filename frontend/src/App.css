@@ -85,3 +85,19 @@ body {
 @media (max-width: 900px) {
   .page-content { padding: 20px 20px; }
 }
+
+@media (max-width: 760px) {
+  .app-shell { --sidebar-width: 54px !important; }
+  .app-sidebar-toggle, .app-nav-label, .app-topbar-secondary { display: none !important; }
+  .app-nav-item { justify-content: center !important; padding: 0 !important; }
+  .app-topbar { padding-inline: 12px !important; }
+  .transaction-layout { grid-template-columns: minmax(0, 1fr) !important; }
+  .transaction-totals { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .transaction-details { display: none !important; }
+  .transaction-details[data-open="true"] {
+    display: flex !important;
+    position: fixed;
+    inset: 64px 0 0 var(--sidebar-width);
+    z-index: 105;
+  }
+}

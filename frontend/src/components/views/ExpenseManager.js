@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { localDateInput } from '../../utils/calendarDate';
 import { useRetryKey } from '../../utils/useRetryKey';
 import React, { useState } from 'react';
 import {
@@ -21,8 +23,8 @@ const ExpenseManager = () => {
   const [addTransaction, { isLoading: isAdding }] = useAddTransactionMutation();
   const [updateTransaction, { isLoading: isUpdating }] = useUpdateTransactionMutation();
   const [deleteTransaction, { isLoading: isDeleting }] = useDeleteTransactionMutation();
-  const { data: dbWallets = [], refetch: refetchWallets } = useGetWalletsQuery();
-  const { data: dbCategories = [] } = useGetCategoriesQuery();
+  const { data: dbWallets = [], isSuccess: walletsLoaded, refetch: refetchWallets } = useGetWalletsQuery();
+  const { data: dbCategories = [], isSuccess: categoriesLoaded } = useGetCategoriesQuery();
 
   const { colors, fontSizeMultiplier } = useTheme();
 
@@ -32,7 +34,7 @@ const ExpenseManager = () => {
   const [selectedWalletFilter, setSelectedWalletFilter] = useState('');
   
   const [page, setPage] = useState(0);
-  const { currentData: rows = [], isFetching, isError } = useGetTransactionsQuery({
+  const { currentData: rows = [], isFetching, isError, refetch: retryTransactions } = useGetTransactionsQuery({
     limit: PAGE_SIZE + 1,
     offset: page * PAGE_SIZE,
     type: activeTab === 'all' ? undefined : activeTab,
@@ -56,7 +58,7 @@ const ExpenseManager = () => {
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [walletId, setWalletId] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => localDateInput());
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState([]);
@@ -122,7 +124,7 @@ const ExpenseManager = () => {
     setIsShared(false);
     setPaymentMode('UPI');
     setTxnType('expense');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(localDateInput());
     setEditingTxnId(null);
   };
 
@@ -144,7 +146,7 @@ const ExpenseManager = () => {
     setNotes(txn.notes || '');
     setTags(txn.tags || []);
     setIsShared(txn.isSharedExpense || false);
-    setDate(txn.date ? new Date(txn.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+    setDate(txn.date ? new Date(txn.date).toISOString().split('T')[0] : localDateInput());
     setIsDrawerOpen(true);
   };
 
@@ -230,6 +232,15 @@ const ExpenseManager = () => {
   return (
     <div style={{ background: colors.background, minHeight: '100%', display: 'flex', flexDirection: 'column', fontFamily: "'Montserrat', sans-serif" }}>
       
+      {((walletsLoaded && !dbWallets.length) || (categoriesLoaded && !dbCategories.length)) && (
+        <p style={{ padding: '12px 24px', color: colors.textPrimary }}>
+          Before your first transaction, set up
+          {walletsLoaded && !dbWallets.length && <> a <Link to="/settings?tab=Wallets">wallet</Link></>}
+          {walletsLoaded && !dbWallets.length && categoriesLoaded && !dbCategories.length && ' and'}
+          {categoriesLoaded && !dbCategories.length && <> a <Link to="/settings?tab=Categories">category</Link></>}.
+        </p>
+      )}
+
       {toast.show && (
         <div style={{ position: 'fixed', top: '84px', right: '24px', background: toast.type === 'success' ? `${colors.green}1A` : `${colors.red}1A`, borderLeft: `4px solid ${toast.type === 'success' ? colors.green : colors.red}`, padding: '14px 24px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 10000, color: toast.type === 'success' ? colors.green : colors.red, fontWeight: 600, fontSize: `${12 * fontSizeMultiplier}px` }}>
           <span>{toast.message}</span>
@@ -252,11 +263,11 @@ const ExpenseManager = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isPanelOpen ? '1fr 380px' : '1fr 0px', transition: 'grid-template-columns 0.4s cubic-bezier(0.16, 1, 0.3, 1)', flex: 1, overflow: 'hidden' }}>
+      <div className="transaction-layout" style={{ display: 'grid', gridTemplateColumns: isPanelOpen ? '1fr 380px' : '1fr 0px', transition: 'grid-template-columns 0.4s cubic-bezier(0.16, 1, 0.3, 1)', flex: 1, overflow: 'hidden' }}>
         
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, background: colors.background }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', background: colors.cardBg, borderBottom: `1px solid ${colors.border}` }}>
+          <div className="transaction-totals" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', background: colors.cardBg, borderBottom: `1px solid ${colors.border}` }}>
             <div style={{ padding: '20px 24px', borderRight: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '8px' }}>Total income</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.6 * fontSizeMultiplier}rem`, fontWeight: 600, color: colors.green }}>₹{totalIncome.toLocaleString('en-IN')}</div>
@@ -312,7 +323,7 @@ const ExpenseManager = () => {
                     <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Category</th>
                     <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Description</th>
                     <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Date</th>
-                    <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Wallet Channel</th>
+                    <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Wallet / payment</th>
                     <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'left' }}>Tags</th>
                     <th style={{ padding: '14px 20px', fontSize: `${11 * fontSizeMultiplier}px`, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: colors.textMuted, textAlign: 'right' }}>Amount</th>
                   </tr>
@@ -320,7 +331,10 @@ const ExpenseManager = () => {
                 <tbody>
                   {filteredTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{ padding: '60px', textAlign: 'center', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textMuted }}>No ledger transaction lines matched current viewport scopes.</td>
+                      <td colSpan="6" style={{ padding: '60px', textAlign: 'center', fontSize: `${13 * fontSizeMultiplier}px`, color: colors.textMuted }}>
+                        {isError ? <>Could not load transactions. <button type="button" onClick={retryTransactions}>Try again</button></>
+                          : isFetching ? 'Loading transactions…' : 'No transactions match these filters.'}
+                      </td>
                     </tr>
                   ) : filteredTransactions.map((txn) => {
           const isExpense = txn.type === 'expense';
@@ -342,11 +356,11 @@ const ExpenseManager = () => {
                         </td>
 
                         <td style={{ padding: '16px 20px', fontSize: `${12 * fontSizeMultiplier}px`, color: colors.textPrimary, fontWeight: 500 }}>
-                          {new Date(txn.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          {new Date(txn.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' })}
                         </td>
 
                         <td style={{ padding: '16px 20px' }}>
-                          <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '6px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, background: colors.bgLight, color: colors.textDark, border: `1px solid ${colors.border}` }}>{txn.paymentMode}</span>
+                          <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '6px', fontSize: `${12 * fontSizeMultiplier}px`, fontWeight: 500, background: colors.bgLight, color: colors.textDark, border: `1px solid ${colors.border}` }}>{[txn.wallet?.name || 'Unknown wallet', txn.paymentMode].filter(Boolean).join(' · ')}</span>
                         </td>
 
                         <td style={{ padding: '16px 20px' }}>
@@ -372,12 +386,12 @@ const ExpenseManager = () => {
 
         </div>
 
-        <div style={{ background: colors.cardBg, borderLeft: `1px solid ${colors.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '-5px 0 20px rgba(0,0,0,0.02)' }}>
+        <div className="transaction-details" data-open={Boolean(isPanelOpen && selectedTxn)} style={{ background: colors.cardBg, borderLeft: `1px solid ${colors.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '-5px 0 20px rgba(0,0,0,0.02)' }}>
           {isPanelOpen && selectedTxn ? (
             <>
               <div style={{ background: colors.tealDark, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Line Inspector</span>
-                <span onClick={() => setIsPanelOpen(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold', transition: 'color 0.2s' }} onMouseOver={e=>e.target.style.color='#fff'} onMouseOut={e=>e.target.style.color='rgba(255,255,255,0.6)'}>✕</span>
+                <button type="button" aria-label="Close transaction details" onClick={() => setIsPanelOpen(false)} style={{ background: 'transparent', border: 0, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold', transition: 'color 0.2s' }} onMouseOver={e=>e.target.style.color='#fff'} onMouseOut={e=>e.target.style.color='rgba(255,255,255,0.6)'}>✕</button>
               </div>
               
               <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
@@ -533,7 +547,7 @@ const ExpenseManager = () => {
 
       {isExportModalOpen && (
         <div onClick={() => setIsExportModalOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: colors.cardBg, borderRadius: '20px', width: '400px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: colors.cardBg, borderRadius: '20px', width: 'min(400px, calc(100vw - 32px))', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
             <div style={{ background: colors.tealDark, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: `${1.1 * fontSizeMultiplier}rem`, fontWeight: 500, color: '#fff', letterSpacing: '1px', textTransform: 'uppercase' }}>Export transactions</span>
               <span onClick={() => setIsExportModalOpen(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '18px', fontWeight: 'bold' }}>✕</span>

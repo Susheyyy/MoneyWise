@@ -53,10 +53,6 @@ export const transactionApi = createApi({
       query: () => '/api/transactions/stats/category',
       providesTags: ['Summary'],
     }),
-    getWalletDistribution: builder.query({
-      query: () => '/api/transactions/stats/wallet',
-      providesTags: ['Summary'],
-    }),
     getIntelligenceStats: builder.query({
       query: () => '/api/analytics/ai-insights',
       providesTags: ['Transaction'], 
@@ -76,7 +72,6 @@ export const {
   useDeleteTransactionMutation,
   useGetMonthlySummaryQuery,
   useGetCategoryBreakdownQuery,
-  useGetWalletDistributionQuery,
   useGetIntelligenceStatsQuery,
   useGetAiRecommendationsMutation
 } = transactionApi;

@@ -17,8 +17,16 @@ const userSchema = new mongoose.Schema({
     }
   },
   isVerified: { type: Boolean, default: false },
-  verificationCode: { type: String, default: null },
-  verificationCodeExpires: { type: Date, default: null },
+  verificationCode: { type: String, select: false },
+  verificationCodeExpires: { type: Date, select: false },
+  emailVerification: {
+    digest: { type: String, select: false },
+    expiresAt: { type: Date, select: false }
+  },
+  passwordRecovery: {
+    digest: { type: String, select: false },
+    expiresAt: { type: Date, select: false }
+  },
   monthlyLogPreference: { type: String, enum: ['start', 'end', 'custom'], default: 'start' },
   monthlyLogCustomDate: { type: Number, default: 1, min: 1, max: 28 },
   monthlyLogLastDismissed: { type: String, default: null },

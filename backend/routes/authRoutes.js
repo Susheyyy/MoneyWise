@@ -7,6 +7,7 @@ const {
   logoutUser,
   getMe, 
   verifyEmail, 
+  resendVerification,
   forgotPassword, 
   resetPassword 
 } = require('../controllers/authController');
@@ -21,10 +22,11 @@ const authLimiter = rateLimit({
 router.post('/signup', authLimiter, registerUser);
 router.post('/login', authLimiter, loginUser);
 router.post('/logout', logoutUser);
-router.post('/verify-email', verifyEmail);
+router.post('/verify-email', authLimiter, verifyEmail);
+router.post('/resend-verification', authLimiter, resendVerification);
 
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
+router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/reset-password', authLimiter, resetPassword);
 
 router.get('/me', protect, getMe);
 

@@ -1,3 +1,4 @@
+import { localDateInput, nextSubscriptionBillingDay, subscriptionBillingDay } from '../../utils/calendarDate';
 import React, { useState } from 'react';
 import { 
   useGetSubscriptionsQuery, 
@@ -25,8 +26,9 @@ const palette = (dark) => (dark ? {
 const inr = (n) => '\u20B9' + Number(n || 0).toLocaleString('en-IN');
 
 const SubscriptionCard = ({ sub, p, mapCategoryIcons, daysText, onToggle, onEdit, onDelete }) => {
-  const renewal = sub.nextBillingDate
-    ? new Date(sub.nextBillingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+  const billingDay = sub.isActive ? nextSubscriptionBillingDay(sub) : subscriptionBillingDay(sub);
+  const renewal = billingDay
+    ? new Date(billingDay).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' })
     : 'N/A';
   const actionBtn = {
     background: 'none', border: `1px solid ${p.border}`, borderRadius: '8px', padding: '6px 12px',
@@ -45,12 +47,12 @@ const SubscriptionCard = ({ sub, p, mapCategoryIcons, daysText, onToggle, onEdit
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: '15px', fontWeight: 600, color: p.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.name}</div>
         <div style={{ fontSize: '12px', color: p.muted, marginTop: '3px' }}>
-          {sub.category} · {sub.billingCycle} · renews {renewal}
+          {sub.category} · {sub.billingCycle} · {sub.isActive ? 'expected renewal' : 'billing date'} {renewal}
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
         <div style={{ fontSize: '16px', fontWeight: 700, color: p.text }}>{inr(sub.amount)}</div>
-        <div style={{ fontSize: '11px', color: p.muted, marginTop: '2px' }}>{sub.isActive ? daysText(sub.nextBillingDate) : 'Paused'}</div>
+        <div style={{ fontSize: '11px', color: p.muted, marginTop: '2px' }}>{sub.isActive ? daysText(billingDay) : 'Paused'}</div>
       </div>
       <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
         <button type="button" onClick={onToggle} style={actionBtn}>{sub.isActive ? 'Pause' : 'Resume'}</button>
@@ -62,13 +64,13 @@ const SubscriptionCard = ({ sub, p, mapCategoryIcons, daysText, onToggle, onEdit
 };
 
 const SubscriptionVault = () => {
-  const { data: subscriptions = [], isLoading } = useGetSubscriptionsQuery();
+  const { data: subscriptions = [], isLoading, isError, refetch } = useGetSubscriptionsQuery();
   const [addSubscription, { isLoading: isAdding }] = useAddSubscriptionMutation();
   const [toggleStatus] = useToggleSubscriptionStatusMutation();
   const [deleteSubscription] = useDeleteSubscriptionMutation();
-  const [editSubscription] = useEditSubscriptionMutation();
+  const [editSubscription, { isLoading: isEditing }] = useEditSubscriptionMutation();
+  const isSaving = isAdding || isEditing;
 
-  const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);  
   const [toast, setToast] = useState({ show: false, message: '', type: 'error' });
@@ -96,42 +98,44 @@ const SubscriptionVault = () => {
   if (isLoading) {
     return <div style={{ padding: '40px', color: pageColors.darkTeal, fontWeight: '600' }}>Synchronizing upcoming renewals...</div>;
   }
+  if (isError) {
+    return <div role="alert" style={{ padding: '40px' }}>Could not load subscriptions. <button type="button" onClick={refetch}>Try again</button></div>;
+  }
 
   const activePlans = subscriptions.filter(s => s.isActive);
   const pausedPlans = subscriptions.filter(s => !s.isActive);
   
   const monthlyBurnSum = activePlans.reduce((sum, s) => {
-    return sum + (s.billingCycle === 'yearly' ? Math.round(s.amount / 12) : s.amount);
+    return sum + (s.billingCycle === 'yearly' ? s.amount / 12 : s.amount);
   }, 0);
   
   const pausedSavingsSum = pausedPlans.reduce((sum, s) => sum + s.amount, 0);
 
-  const sortedUpcoming = [...activePlans].sort((a, b) => new Date(a.nextBillingDate) - new Date(b.nextBillingDate));
+  const sortedUpcoming = activePlans.filter(plan => nextSubscriptionBillingDay(plan))
+    .sort((a, b) => nextSubscriptionBillingDay(a).localeCompare(nextSubscriptionBillingDay(b)));
   const primaryUpcoming = sortedUpcoming[0];
 
   const getDaysRemainingText = (dateStr) => {
     if (!dateStr) return 'N/A';
-    const diff = new Date(dateStr) - new Date();
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return days <= 0 ? 'Today' : `${days} days`;
+    const days = (Date.parse(dateStr) - Date.parse(localDateInput())) / 86400000;
+    if (days < 0) return `${-days} days overdue`;
+    return days === 0 ? 'Today' : `${days} days`;
   };
 
   const handleFormReset = () => {
-    setShowAddForm(false);
     setEditingId(null);
     setNewSubData({ name: '', amount: '', category: 'Streaming & Video', billingCycle: 'monthly', nextBillingDate: '' });
   };
 
   const handleCreateOrUpdateSubscriptionSubmit = async (e) => {
     e.preventDefault();
-    const [year, month, day] = newSubData.nextBillingDate.split('-');
-    const localDate = new Date(year, month - 1, day); 
+    if (isSaving) return;
 
     try {
       const payload = {
         ...newSubData,
         amount: Number(newSubData.amount),
-        nextBillingDate: localDate.toISOString(),
+        billingDay: newSubData.nextBillingDate,
         billingCycle: newSubData.billingCycle.toLowerCase()
       };
 
@@ -149,7 +153,7 @@ const SubscriptionVault = () => {
   };
 
   const handleInitiateEditMode = (sub) => {
-    const formattedDate = sub.nextBillingDate ? new Date(sub.nextBillingDate).toISOString().split('T')[0] : '';
+    const formattedDate = subscriptionBillingDay(sub);
     setNewSubData({
       name: sub.name,
       amount: sub.amount,
@@ -158,7 +162,6 @@ const SubscriptionVault = () => {
       nextBillingDate: formattedDate
     });
     setEditingId(sub._id);
-    setShowAddForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -192,10 +195,6 @@ const SubscriptionVault = () => {
   const IconCloud = () => (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
   );
-  const IconSparkles = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3v3M12 18v3M4.22 4.22l2.12 2.12" /></svg>
-  );
-
   const mapCategoryIcons = (category) => {
     switch (category) {
       case 'Music & Podcasts': return <IconMusic />;
@@ -226,7 +225,7 @@ const SubscriptionVault = () => {
   const summaryCards = [
     { label: 'Monthly cost', value: inr(monthlyBurnSum), sub: `${activePlans.length} active` },
     { label: 'Yearly projection', value: inr(monthlyBurnSum * 12), sub: 'at current plans' },
-    { label: 'Next renewal', value: primaryUpcoming ? primaryUpcoming.name : 'None', sub: primaryUpcoming ? daysText(primaryUpcoming.nextBillingDate) : 'Add a subscription' },
+    { label: 'Next expected renewal', value: primaryUpcoming ? primaryUpcoming.name : 'None', sub: primaryUpcoming ? daysText(nextSubscriptionBillingDay(primaryUpcoming)) : 'Add a subscription' },
     { label: 'Paused', value: inr(pausedSavingsSum), sub: `${pausedPlans.length} paused` },
   ];
 
@@ -345,8 +344,8 @@ const SubscriptionVault = () => {
             {editingId && (
               <button type="button" onClick={handleFormReset} style={{ background: 'none', border: `1px solid ${p.border}`, borderRadius: '10px', padding: '10px 16px', color: p.text, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
             )}
-            <button type="submit" disabled={isAdding} style={{ flex: 1, background: p.btnBg, color: p.btnText, border: 'none', borderRadius: '10px', padding: '10px 16px', fontWeight: 600, fontSize: '14px', cursor: isAdding ? 'default' : 'pointer', opacity: isAdding ? 0.6 : 1, fontFamily: 'inherit' }}>
-              {isAdding ? 'Saving...' : editingId ? 'Save changes' : 'Add subscription'}
+            <button type="submit" disabled={isSaving} style={{ flex: 1, background: p.btnBg, color: p.btnText, border: 'none', borderRadius: '10px', padding: '10px 16px', fontWeight: 600, fontSize: '14px', cursor: isSaving ? 'default' : 'pointer', opacity: isSaving ? 0.6 : 1, fontFamily: 'inherit' }}>
+              {isSaving ? 'Saving…' : editingId ? 'Save changes' : 'Add subscription'}
             </button>
           </div>
         </form>

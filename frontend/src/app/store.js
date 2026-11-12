@@ -12,6 +12,33 @@ const listener = createListenerMiddleware();
 const accountApis = [authApi, transactionApi, categoryApi, subscriptionApi, groupApi, goalApi, walletApi];
 
 listener.startListening({
+  matcher: isAnyOf(
+    walletApi.endpoints.updateWallet.matchFulfilled, walletApi.endpoints.deleteWallet.matchFulfilled,
+    categoryApi.endpoints.updateCategory.matchFulfilled, categoryApi.endpoints.deleteCategory.matchFulfilled
+  ),
+  effect: (_, { dispatch }) => dispatch(transactionApi.util.invalidateTags(['Transaction', 'Summary'])),
+});
+
+listener.startListening({
+  matcher: authApi.endpoints.updateProfile.matchFulfilled,
+  effect: (action, { dispatch }) => {
+    const budgets = action.meta.arg.originalArgs.budgets;
+    if (budgets?.length) {
+      const changes = new Map(budgets.map(({ id, budget }) => [id, budget]));
+      dispatch(categoryApi.util.updateQueryData('getCategories', undefined, categories => {
+        for (const category of categories) {
+          if (changes.has(category._id)) category.budget = changes.get(category._id);
+        }
+      }));
+      dispatch(categoryApi.util.invalidateTags(['Category']));
+    }
+    dispatch(authApi.util.updateQueryData('getProfile', undefined, profile => {
+      Object.assign(profile, action.payload);
+    }));
+  },
+});
+
+listener.startListening({
   matcher: isAnyOf(logout, setCredentials),
   effect: (_, { dispatch }) => {
     for (const api of accountApis) {
@@ -24,11 +51,6 @@ listener.startListening({
 listener.startListening({
   matcher: isAnyOf(goalApi.endpoints.addContribution.matchFulfilled, goalApi.endpoints.deleteGoal.matchFulfilled),
   effect: (_, { dispatch }) => dispatch(walletApi.util.invalidateTags(['Wallet'])),
-});
-
-listener.startListening({
-  matcher: isAnyOf(categoryApi.endpoints.deleteCategory.matchFulfilled, walletApi.endpoints.deleteWallet.matchFulfilled),
-  effect: (_, { dispatch }) => dispatch(transactionApi.util.invalidateTags(['Transaction', 'Summary'])),
 });
 
 export const store = configureStore({

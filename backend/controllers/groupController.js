@@ -269,10 +269,11 @@ exports.removeGroupMatrix = async (req, res) => {
   }
 };
 
-async function readGroupBalances(group, session) {
+async function readGroupBalances(group, session, includeActivity = false) {
   const balances = Object.fromEntries(group.members.map(member => [String(member._id ?? member), 0]));
 
   let total = 0;
+  const recentEntries = [];
   const applyExpense = (expense, totalPaise) => {
     const payer = String(expense.paidBy);
     total += totalPaise;
@@ -294,13 +295,18 @@ async function readGroupBalances(group, session) {
   const query = GroupEntry.find({ group: group._id }).lean();
   if (session) query.session(session);
   for await (const entry of query.cursor()) {
+    if (includeActivity && entry.createdAt) {
+      recentEntries.push(entry);
+      recentEntries.sort((a, b) => b.createdAt - a.createdAt);
+      if (recentEntries.length > 4) recentEntries.pop();
+    }
     if (entry.kind === 'expense') applyExpense(entry, entry.paise);
     else if (balances[entry.paidBy] !== undefined && balances[entry.recipient] !== undefined) {
       balances[entry.paidBy] += entry.paise;
       balances[entry.recipient] -= entry.paise;
     }
   }
-  return { balances, total };
+  return { balances, total, recentEntries };
 }
 
 exports.recordRepayment = async (req, res) => {
@@ -341,7 +347,17 @@ exports.getSettlementSummary = async (req, res) => {
     const group = await Group.findOne({ _id: req.params.id, members: req.user.id, archivedAt: null }).populate('members', 'name email');
     if (!group) return res.status(404).json({ message: 'Group workspace matrix container not found.' });
 
-    const { balances, total } = await readGroupBalances(group);
+    const { balances, total, recentEntries } = await readGroupBalances(group, null, true);
+    const memberNames = new Map(group.members.map(member => [String(member._id), member.name]));
+    const recentActivity = recentEntries.map(entry => {
+      const payer = memberNames.get(String(entry.paidBy)) || 'A member';
+      const recipient = memberNames.get(String(entry.recipient)) || 'a member';
+      const amount = (entry.paise / 100).toLocaleString('en-IN');
+      const text = entry.kind === 'repayment'
+        ? `${recipient} recorded ₹${amount} received from ${payer}.`
+        : `${payer} added "${entry.description}" for ₹${amount}.`;
+      return { text, createdAt: entry.createdAt };
+    });
 
     const creditors = [];
     const debtors = [];
@@ -381,7 +397,9 @@ exports.getSettlementSummary = async (req, res) => {
       totalSpent: total / 100,
       netBalances: Object.fromEntries(Object.entries(balances).map(([user, paise]) => [user, paise / 100])),
       simplestWayToSettle: simpleSettlementPaths,
-      activityLog: group.activityLog || []
+      activityLog: [...(group.activityLog || []), ...recentActivity]
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+        .slice(-50),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
